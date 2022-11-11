@@ -1,0 +1,13 @@
+[Unit]
+Description=Stremio Service
+Requires=graphical.target
+
+[Service]
+Environment="GDK_BACKEND=wayland,x11"
+Environment="WAYLAND_DISPLAY=wayland-0"
+Environment="DISPLAY=wayland-0"
+ExecStart=/usr/bin/stremio-service/service
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target

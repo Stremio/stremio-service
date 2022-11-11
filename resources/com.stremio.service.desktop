@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Stremio Service
+Comment=Freedom To Stream
+Exec=/usr/bin/stremio-service/stremio-service
+Terminal=false
+Type=Application
+Categories=GTK;GNOME;Utility;
+Keywords=Stremio;Media;Play;
+StartupNotify=true
+Icon=com.stremio.service

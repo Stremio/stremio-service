@@ -1,7 +1,7 @@
 [Desktop Entry]
 Name=Stremio Service
 Comment=Freedom To Stream
-Exec=/usr/bin/stremio-service/stremio-service
+Exec=/usr/bin/stremio-service/service
 Terminal=false
 Type=Application
 Categories=GTK;GNOME;Utility;

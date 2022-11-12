@@ -9,6 +9,11 @@ cargo build --release
 
 ### Package
 
+#### Windows
+```
+cargo wix
+```
+
 #### Ubuntu
 ```
 cargo deb

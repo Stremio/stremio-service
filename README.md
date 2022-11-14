@@ -5,9 +5,16 @@
 ### Requirements
 #### Windows
 Download & Install [Wix Toolset](https://github.com/wixtoolset/wix3/releases)  
-Install `cargo-wix`
 ```
 cargo install cargo-wix
+```
+
+#### Ubuntu
+```
+apt install libgtk-3-dev pkg-config libssl-dev libayatana-appindicator3-dev
+```
+```
+cargo install cargo-deb
 ```
 
 ### Build

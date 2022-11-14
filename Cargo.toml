@@ -48,7 +48,6 @@ section = "Stremio;Media;Play;"
 priority = "optional"
 assets = [
     ["target/release/service", "/usr/bin/stremio-service/service", "755"],
-    ["target/release/updater", "/usr/bin/stremio-service/updater", "755"],
     ["target/release/version", "/usr/bin/stremio-service/version", "755"],
     ["target/release/node", "/usr/bin/stremio-service/node", "755"],
     ["target/release/ffmpeg", "/usr/bin/stremio-service/ffmpeg", "755"],
@@ -61,7 +60,6 @@ assets = [
 # post_install_script = "gnome_version=$(gnome-shell --version  | awk '{print $NF}') && echo https://extensions.gnome.org/extension-data/appindicatorsupportrgcjonas.gmail.com.GNOME_VERSION.shell-extension.zip | sed -e s/GNOME_VERSION/$gnome_version/g"
 assets = [
     { source = "target/release/service", dest = "/usr/bin/stremio-service/service", mode = "755" },
-    { source = "target/release/updater", dest = "/usr/bin/stremio-service/updater", mode = "755" },
     { source = "target/release/version", dest = "/usr/bin/stremio-service/version", mode = "755" },
     { source = "target/release/node", dest = "/usr/bin/stremio-service/node", mode = "755" },
     { source = "target/release/ffmpeg", dest = "/usr/bin/stremio-service/ffmpeg", mode = "755" },

@@ -27,6 +27,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let options = Options::parse();
 
+    let lock_path = join_current_exe_dir("lock");
+    if lock_path.exists() {
+        info!("Exiting, another instance is running.");
+        return Ok(())
+    }
+
+    std::fs::File::create(lock_path.clone())?;
+
     #[cfg(not(target_os = "linux"))]
     if !options.skip_updater {
         let updater_binary_path = join_current_exe_dir("updater");
@@ -72,6 +80,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
             },
             Event::LoopDestroyed => {
                 server.stop();
+                std::fs::remove_file(lock_path.clone())
+                    .expect("Failed to delete lock file.");
             },
             _ => (),
         }

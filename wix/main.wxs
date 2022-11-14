@@ -137,6 +137,14 @@
                                 Source='$(var.CargoTargetBinDir)\ffmpeg.exe'
                                 KeyPath='yes'/>
                         </Component>
+                        <Component Id='Version' Guid='*'>
+                            <File
+                                Id='VersionFile'
+                                Name='version'
+                                DiskId='1'
+                                Source='$(var.CargoTargetBinDir)\version'
+                                KeyPath='yes'/>
+                        </Component>
                     </Directory>
                 </Directory>
             </Directory>
@@ -161,6 +169,7 @@
             <ComponentRef Id='binary1'/>
             <ComponentRef Id='binary2'/>
             <ComponentRef Id='binary3'/>
+            <ComponentRef Id='Version'/>
         </Feature>
 
         <SetProperty Id='ARPINSTALLLOCATION' Value='[APPLICATIONFOLDER]' After='CostFinalize'/>

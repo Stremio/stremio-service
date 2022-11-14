@@ -11,7 +11,7 @@ cargo install cargo-wix
 
 #### Ubuntu
 ```
-apt install libgtk-3-dev pkg-config libssl-dev libayatana-appindicator3-dev
+apt install build-essential libgtk-3-dev pkg-config libssl-dev libayatana-appindicator3-dev
 ```
 ```
 cargo install cargo-deb

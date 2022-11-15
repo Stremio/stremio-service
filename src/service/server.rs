@@ -1,11 +1,10 @@
 use std::{fs, error::Error, process::{Child, Command}, path::PathBuf};
 use log::{error, info};
-use dirs;
 
 use stremio_service::shared::join_current_exe_dir;
 
 const STREMIO_SERVER_URL: &str = "https://dl.strem.io/four/master/server.js";
-const STREMIO_SERVER_LOCATION: &str = ".stremio-server";
+
 
 pub struct Server {
     data_location: PathBuf,
@@ -14,11 +13,7 @@ pub struct Server {
 }
 
 impl Server {
-    pub fn new() -> Self {
-        let data_location = dirs::home_dir()
-            .expect("Failed to get home dir")
-            .join(STREMIO_SERVER_LOCATION);
-
+    pub fn new(data_location: PathBuf) -> Self {
         let server_location = data_location.join("server.js");
 
         Self {

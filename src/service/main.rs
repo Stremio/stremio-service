@@ -1,3 +1,4 @@
+mod config;
 mod server;
 
 use std::{error::Error, process::Command};
@@ -6,10 +7,9 @@ use clap::Parser;
 use tao::{event_loop::{EventLoop, ControlFlow}, menu::{ContextMenu, MenuItemAttributes, MenuId}, system_tray::{SystemTrayBuilder, SystemTray}, TrayId, event::Event};
 use rust_embed::RustEmbed;
 
+use config::{DATA_DIR, STREMIO_URL};
 use server::Server;
 use stremio_service::shared::{load_icon, get_version_string, join_current_exe_dir};
-
-const STREMIO_URL: &str = "https://web.stremio.com";
 
 #[derive(RustEmbed)]
 #[folder = "icons"]
@@ -27,7 +27,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let options = Options::parse();
 
-    let lock_path = join_current_exe_dir("lock");
+    let data_location = dirs::home_dir()
+        .expect("Failed to get home dir")
+        .join(DATA_DIR);
+
+    std::fs::create_dir_all(data_location.clone())?;
+
+    let lock_path = data_location.join("lock");
     if lock_path.exists() {
         info!("Exiting, another instance is running.");
         return Ok(())
@@ -51,7 +57,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         return Ok(())
     }
 
-    let mut server = Server::new();
+    let mut server = Server::new(data_location);
     server.update().await?;
     server.start()?;
 

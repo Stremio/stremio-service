@@ -1,0 +1,44 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - name: Rust setup
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: Install dependencies
+        if: matrix.platform == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install build-essential libgtk-3-dev pkg-config libssl-dev libayatana-appindicator3-dev
+      - name: Build
+        run: cargo build
+      - name: Zip release
+        uses: vimtor/action-zip@v1
+        with:
+          if: matrix.platform == 'ubuntu-latest'
+          files: target/release/ffmpeg target/release/node target/release/service target/release/updater target/release/version
+          if: matrix.platform == 'windows-latest'
+          files: target/release/ffmpeg.exe target/release/node.exe target/release/service.exe target/release/updater.exe target/release/version
+          dest: stremio-service-${{ matrix.platform }}.zip
+      - name: Upload release
+        uses: svenstaro/upload-release-action@v1-release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: stremio-service-${{ matrix.platform }}.zip
+          asset_name: stremio-service-${{ matrix.platform }}.zip
+          tag: ${{ github.ref }}
+          overwrite: true

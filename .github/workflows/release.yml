@@ -27,7 +27,7 @@ jobs:
       - name: Build
         run: cargo build
       - if: matrix.platform == 'ubuntu-latest'
-        name: Zip release for ubuntu
+        name: Zip release for linux
         uses: vimtor/action-zip@v1
         with:
           files: target/release/ffmpeg target/release/node target/release/service target/release/updater target/release/version
@@ -38,11 +38,21 @@ jobs:
         with:
           files: target/release/ffmpeg.exe target/release/node.exe target/release/service.exe target/release/updater.exe target/release/version
           dest: stremio-service-windows.zip
-      - name: Upload release
+      - if: matrix.platform == 'ubuntu-latest'
+        name: Upload linux release
         uses: svenstaro/upload-release-action@v1-release
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: stremio-service-${{ matrix.platform }}.zip
-          asset_name: stremio-service-${{ matrix.platform }}.zip
+          file: stremio-service-linux.zip
+          asset_name: stremio-service-linux.zip
+          tag: ${{ github.ref }}
+          overwrite: true
+      - if: matrix.platform == 'windows-latest'
+        name: Upload windows release
+        uses: svenstaro/upload-release-action@v1-release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: stremio-service-windows.zip
+          asset_name: stremio-service-windows.zip
           tag: ${{ github.ref }}
           overwrite: true

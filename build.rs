@@ -1,5 +1,4 @@
 use std::{error::Error, fs, io::Write, path::PathBuf};
-use embed_resource;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let current_dir = std::env::current_dir()?;

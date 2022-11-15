@@ -15,6 +15,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     let binaries_dir = current_dir.join("binaries");
     copy_binaries(binaries_dir, &target_bin_path)?;
 
+    if cfg!(target_os = "windows") {
+        let resources_file = current_dir.join("resources").join("resources.res");
+        println!("cargo:rustc-link-arg={}", resources_file.to_str().unwrap());
+    }
+
     Ok(())
 }
 

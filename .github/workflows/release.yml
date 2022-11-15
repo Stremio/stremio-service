@@ -26,14 +26,18 @@ jobs:
           sudo apt-get install build-essential libgtk-3-dev pkg-config libssl-dev libayatana-appindicator3-dev
       - name: Build
         run: cargo build
-      - name: Zip release
+      - if: matrix.platform == 'ubuntu-latest'
+        name: Zip release for ubuntu
         uses: vimtor/action-zip@v1
         with:
-          if: matrix.platform == 'ubuntu-latest'
           files: target/release/ffmpeg target/release/node target/release/service target/release/updater target/release/version
-          if: matrix.platform == 'windows-latest'
+          dest: stremio-service-linux.zip
+      - if: matrix.platform == 'windows-latest'
+        name: Zip release for windows
+        uses: vimtor/action-zip@v1
+        with:
           files: target/release/ffmpeg.exe target/release/node.exe target/release/service.exe target/release/updater.exe target/release/version
-          dest: stremio-service-${{ matrix.platform }}.zip
+          dest: stremio-service-windows.zip
       - name: Upload release
         uses: svenstaro/upload-release-action@v1-release
         with:

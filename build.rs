@@ -1,4 +1,5 @@
 use std::{error::Error, fs, io::Write, path::PathBuf};
+use embed_resource;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let current_dir = std::env::current_dir()?;
@@ -16,8 +17,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     copy_binaries(binaries_dir, &target_bin_path)?;
 
     if cfg!(target_os = "windows") {
-        let resources_file = current_dir.join("resources").join("resources.res");
-        println!("cargo:rustc-link-arg={}", resources_file.to_str().unwrap());
+        let resources_file = current_dir.join("resources").join("resources.rc");
+        embed_resource::compile(resources_file.to_str().unwrap());
     }
 
     Ok(())

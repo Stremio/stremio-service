@@ -104,48 +104,46 @@
                             KeyPath='yes'/>
                     </Component>
                     
-                    <Directory Id='Bin' Name='bin'>
-                        <Component Id='binary0' Guid='*'>
-                            <File
-                                Id='exe0'
-                                Name='service.exe'
-                                DiskId='1'
-                                Source='$(var.CargoTargetBinDir)\service.exe'
-                                KeyPath='yes'/>
-                        </Component>
-                        <Component Id='binary1' Guid='*'>
-                            <File
-                                Id='exe1'
-                                Name='updater.exe'
-                                DiskId='1'
-                                Source='$(var.CargoTargetBinDir)\updater.exe'
-                                KeyPath='yes'/>
-                        </Component>
-                        <Component Id='binary2' Guid='*'>
-                            <File
-                                Id='exe2'
-                                Name='node.exe'
-                                DiskId='1'
-                                Source='$(var.CargoTargetBinDir)\node.exe'
-                                KeyPath='yes'/>
-                        </Component>
-                        <Component Id='binary3' Guid='*'>
-                            <File
-                                Id='exe3'
-                                Name='ffmpeg.exe'
-                                DiskId='1'
-                                Source='$(var.CargoTargetBinDir)\ffmpeg.exe'
-                                KeyPath='yes'/>
-                        </Component>
-                        <Component Id='Version' Guid='*'>
-                            <File
-                                Id='VersionFile'
-                                Name='version'
-                                DiskId='1'
-                                Source='$(var.CargoTargetBinDir)\version'
-                                KeyPath='yes'/>
-                        </Component>
-                    </Directory>
+                    <Component Id='binary0' Guid='*'>
+                        <File
+                            Id='exe0'
+                            Name='service.exe'
+                            DiskId='1'
+                            Source='$(var.CargoTargetBinDir)\service.exe'
+                            KeyPath='yes'/>
+                    </Component>
+                    <Component Id='binary1' Guid='*'>
+                        <File
+                            Id='exe1'
+                            Name='updater.exe'
+                            DiskId='1'
+                            Source='$(var.CargoTargetBinDir)\updater.exe'
+                            KeyPath='yes'/>
+                    </Component>
+                    <Component Id='binary2' Guid='*'>
+                        <File
+                            Id='exe2'
+                            Name='node.exe'
+                            DiskId='1'
+                            Source='$(var.CargoTargetBinDir)\node.exe'
+                            KeyPath='yes'/>
+                    </Component>
+                    <Component Id='binary3' Guid='*'>
+                        <File
+                            Id='exe3'
+                            Name='ffmpeg.exe'
+                            DiskId='1'
+                            Source='$(var.CargoTargetBinDir)\ffmpeg.exe'
+                            KeyPath='yes'/>
+                    </Component>
+                    <Component Id='Version' Guid='*'>
+                        <File
+                            Id='VersionFile'
+                            Name='version'
+                            DiskId='1'
+                            Source='$(var.CargoTargetBinDir)\version'
+                            KeyPath='yes'/>
+                    </Component>
                 </Directory>
             </Directory>
 
@@ -154,7 +152,7 @@
                     <Shortcut Id="ApplicationDesktopShortcut"
                         Name="Stremio Service"
                         Description="Start Stremio Service"
-                        Target="[APPLICATIONFOLDER]bin\service.exe"
+                        Target="[APPLICATIONFOLDER]service.exe"
                         WorkingDirectory="APPLICATIONFOLDER"
                     />
                     <RemoveFolder Id="DesktopFolder" On="uninstall" />

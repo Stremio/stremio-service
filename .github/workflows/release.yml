@@ -30,13 +30,13 @@ jobs:
         name: Zip release for linux
         uses: vimtor/action-zip@v1
         with:
-          files: target/release/ffmpeg target/release/node target/release/service target/release/updater target/release/version
+          files: target/release/ffmpeg target/release/node target/release/service target/release/version
           dest: stremio-service-linux.zip
       - if: matrix.platform == 'windows-latest'
         name: Zip release for windows
         uses: vimtor/action-zip@v1
         with:
-          files: target/release/ffmpeg.exe target/release/node.exe target/release/service.exe target/release/updater.exe target/release/version
+          files: target/release/ffmpeg.exe target/release/node.exe target/release/service.exe target/release/version
           dest: stremio-service-windows.zip
       - if: matrix.platform == 'ubuntu-latest'
         name: Upload linux release

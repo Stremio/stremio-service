@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [ubuntu-latest, windows-latest]
+        platform: [macos-latest, windows-latest]
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout repository
@@ -19,14 +19,9 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-      - name: Install dependencies
-        if: matrix.platform == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install build-essential libgtk-3-dev pkg-config libssl-dev libayatana-appindicator3-dev
       - name: Build
         run: cargo build --release
-      - if: matrix.platform == 'ubuntu-latest'
+      - if: matrix.platform == 'macos-latest'
         name: Zip release for linux
         uses: vimtor/action-zip@v1
         with:
@@ -38,13 +33,13 @@ jobs:
         with:
           files: target/release/ffmpeg.exe target/release/node.exe target/release/service.exe target/release/version
           dest: stremio-service-windows.zip
-      - if: matrix.platform == 'ubuntu-latest'
-        name: Upload linux release
+      - if: matrix.platform == 'macos-latest'
+        name: Upload macos release
         uses: svenstaro/upload-release-action@v1-release
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: stremio-service-linux.zip
-          asset_name: stremio-service-linux.zip
+          file: stremio-service-macos.zip
+          asset_name: stremio-service-macos.zip
           tag: ${{ github.ref }}
           overwrite: true
       - if: matrix.platform == 'windows-latest'

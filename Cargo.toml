@@ -48,12 +48,13 @@ extended-description = "Media Center"
 depends = "$auto"
 section = "Stremio;Media;Play;"
 priority = "optional"
+maintainer-scripts = "/"
+systemd-units = { unit-scripts = "resources/", unit-name = "stremio", enable = true, start = true, restart-after-upgrade = true, stop-on-upgrade = true }
 assets = [
     ["target/release/service", "/usr/bin/stremio-service/service", "755"],
     ["target/release/version", "/usr/bin/stremio-service/version", "755"],
     ["target/release/node", "/usr/bin/stremio-service/node", "755"],
     ["target/release/ffmpeg", "/usr/bin/stremio-service/ffmpeg", "755"],
-    ["resources/stremio.service", "/etc/systemd/system/stremio.service", "644"],
     ["resources/com.stremio.service.desktop", "/usr/share/applications/com.stremio.service.desktop", "644"],
     ["resources/com.stremio.service.svg", "/usr/share/icons/hicolor/scalable/apps/com.stremio.service.svg", "644"],
 ]

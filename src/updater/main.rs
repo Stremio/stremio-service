@@ -1,8 +1,8 @@
-use stremio_service::shared::get_current_exe_dir;
-
 use std::{error::Error, io::Cursor, path::PathBuf, process::Command};
 use log::{error, info};
 use clap::Parser;
+
+use stremio_service::shared::get_current_exe_dir;
 
 #[derive(Parser, Debug)]
 pub struct Options {

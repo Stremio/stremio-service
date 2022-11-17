@@ -1,19 +1,16 @@
-mod config;
+mod updater;
 mod server;
 
-use std::{error::Error, process::Command, path::PathBuf};
+use std::{error::Error, path::PathBuf};
 use log::{error, info};
 use clap::Parser;
-use octocrab::models::repos::Asset;
-use reqwest::Url;
-use semver::{Version, VersionReq};
 use tao::{event_loop::{EventLoop, ControlFlow}, menu::{ContextMenu, MenuItemAttributes, MenuId}, system_tray::{SystemTrayBuilder, SystemTray}, TrayId, event::Event};
 use native_dialog::{MessageDialog, MessageType};
 use rust_embed::RustEmbed;
 
-use config::{DATA_DIR, STREMIO_URL, UPDATE_REPO_OWNER, UPDATE_REPO_NAME, UPDATE_FILE_NAME, UPDATE_FILE_EXT};
+use updater::{fetch_update, run_updater};
 use server::Server;
-use stremio_service::shared::{load_icon, get_version_string, join_current_exe_dir};
+use stremio_service::{config::{DATA_DIR, STREMIO_URL}, shared::{load_icon, get_version_string}};
 
 #[derive(RustEmbed)]
 #[folder = "icons"]
@@ -23,11 +20,6 @@ struct Icons;
 pub struct Options {
     #[clap(short, long)]
     pub skip_updater: bool,
-}
-
-struct Update {
-    version: Version,
-    file: Asset
 }
 
 #[tokio::main]
@@ -148,59 +140,4 @@ fn create_system_tray(event_loop: &EventLoop<()>) -> Result<(Option<SystemTray>,
         open_item.id(),
         quit_item.id()
     ))
-}
-
-async fn fetch_update(version: &str) -> Result<Option<Update>, Box<dyn Error>> {
-    let response = octocrab::instance()
-        .repos(UPDATE_REPO_OWNER, UPDATE_REPO_NAME)
-        .releases()
-        .list()
-        .send()
-        .await;
-
-    match response {
-        Ok(page) => {
-            let next_version = VersionReq::parse(&(">".to_owned() + version))?;
-            let update: Option<Update> = page.items.iter().find_map(|release| {
-                let version = Version::parse(&release.tag_name.replace("v", ""))
-                    .expect("Failed to parse release version tag");
-
-                match next_version.matches(&version) {
-                    true => {
-                        release.assets.iter().find_map(|asset| {
-                            let update_file_name = format!("{}-{}.{}", UPDATE_FILE_NAME, std::env::consts::OS, UPDATE_FILE_EXT);
-                            match asset.name == update_file_name {
-                                true => Some(Update {
-                                    version: version.clone(),
-                                    file: asset.clone()
-                                }),
-                                false => None
-                            }
-                        })
-                    },
-                    false => None
-                }
-            });
-        
-            return Ok(update)
-        },
-        Err(e) => error!("Failed to fetch releases from {UPDATE_REPO_OWNER}/{UPDATE_REPO_NAME}: {}", e)
-    }
-    
-    Ok(None)
-}
-
-fn run_updater(update_url: Url) {
-    let updater_binary_path = join_current_exe_dir("updater");
-    
-    let mut command = Command::new(updater_binary_path);
-    command.arg(format!("--url={}", update_url));
-
-    match command.spawn() {
-        Ok(process) => {
-            let process_pid = process.id();
-            info!("Updater started. (PID {:?})", process_pid);
-        },
-        Err(err) => error!("Updater couldn't be started: {err}")
-    }
 }

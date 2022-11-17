@@ -1,10 +1,7 @@
 use std::{fs, error::Error, process::{Child, Command}, path::PathBuf};
 use log::{error, info};
 
-use stremio_service::shared::join_current_exe_dir;
-
-const STREMIO_SERVER_URL: &str = "https://dl.strem.io/four/master/server.js";
-
+use stremio_service::{config::STREMIO_SERVER_URL, shared::join_current_exe_dir};
 
 pub struct Server {
     data_location: PathBuf,

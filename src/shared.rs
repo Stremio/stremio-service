@@ -28,10 +28,3 @@ pub fn join_current_exe_dir(append: &str) -> PathBuf {
     let current_exe_dir = get_current_exe_dir();
     current_exe_dir.join(PathBuf::from(append))
 }
-
-pub fn get_version_string() -> String {
-    let version_file_path = join_current_exe_dir("version");
-
-    std::fs::read_to_string(version_file_path)
-        .expect("Failed to read version file")
-}

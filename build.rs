@@ -1,4 +1,4 @@
-use std::{error::Error, fs, io::Write, path::PathBuf};
+use std::{error::Error, fs, path::PathBuf};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let current_dir = std::env::current_dir()?;
@@ -10,8 +10,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         out_dir.join("release")
     };
 
-    create_version_file(&target_bin_path)?;
-
     let binaries_dir = current_dir.join("binaries");
     copy_binaries(binaries_dir, &target_bin_path)?;
 
@@ -19,16 +17,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         let resources_file = current_dir.join("resources").join("resources.rc");
         embed_resource::compile(resources_file.to_str().unwrap());
     }
-
-    Ok(())
-}
-
-fn create_version_file(path: &PathBuf) -> Result<(), Box<dyn Error>> {
-    let version_file_path = path.join("version");
-    let mut file = fs::File::create(version_file_path)?;
-
-    let version = env!("CARGO_PKG_VERSION");
-    file.write(version.as_bytes())?;
 
     Ok(())
 }

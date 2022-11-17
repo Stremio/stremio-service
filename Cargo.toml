@@ -52,7 +52,6 @@ maintainer-scripts = "/"
 systemd-units = { unit-scripts = "resources/", unit-name = "stremio", enable = true, start = true, restart-after-upgrade = true, stop-on-upgrade = true }
 assets = [
     ["target/release/service", "/usr/bin/stremio-service/service", "755"],
-    ["target/release/version", "/usr/bin/stremio-service/version", "644"],
     ["binaries/node-linux", "/usr/bin/stremio-service/node", "755"],
     ["binaries/ffmpeg-linux", "/usr/bin/stremio-service/ffmpeg", "755"],
     ["resources/com.stremio.service.desktop", "/usr/share/applications/com.stremio.service.desktop", "644"],
@@ -63,7 +62,6 @@ assets = [
 # post_install_script = "gnome_version=$(gnome-shell --version  | awk '{print $NF}') && echo https://extensions.gnome.org/extension-data/appindicatorsupportrgcjonas.gmail.com.GNOME_VERSION.shell-extension.zip | sed -e s/GNOME_VERSION/$gnome_version/g"
 assets = [
     [ "target/release/service", "/usr/bin/stremio-service/service", "755" ],
-    [ "target/release/version", "/usr/bin/stremio-service/version", "644" ],
     [ "binaries/node-linux", "/usr/bin/stremio-service/node", "755" ],
     [ "binaries/ffmpeg-linux", "/usr/bin/stremio-service/ffmpeg", "755" ],
     [ "resources/stremio.service", "/etc/systemd/system/stremio.service", "644" ],

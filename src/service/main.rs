@@ -10,7 +10,7 @@ use rust_embed::RustEmbed;
 
 use updater::{fetch_update, run_updater};
 use server::Server;
-use stremio_service::{config::{DATA_DIR, STREMIO_URL}, shared::{load_icon, get_version_string}};
+use stremio_service::{config::{DATA_DIR, STREMIO_URL}, shared::load_icon};
 
 #[derive(RustEmbed)]
 #[folder = "icons"]
@@ -44,7 +44,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     #[cfg(not(target_os = "linux"))]
     if !options.skip_updater {
-        let current_version = get_version_string();
+        let current_version = env!("CARGO_PKG_VERSION");
         info!("Fetching updates for v{}", current_version);
 
         match fetch_update(&current_version).await {
@@ -121,7 +121,7 @@ fn create_system_tray(event_loop: &EventLoop<()>) -> Result<(Option<SystemTray>,
     let open_item = tray_menu.add_item(MenuItemAttributes::new("Open Stremio Web"));
     let quit_item = tray_menu.add_item(MenuItemAttributes::new("Quit"));
 
-    let version_item_label = format!("v{}", get_version_string());
+    let version_item_label = format!("v{}", env!("CARGO_PKG_VERSION"));
     let version_item = MenuItemAttributes::new(version_item_label.as_str())
         .with_enabled(false);
     tray_menu.add_item(version_item);

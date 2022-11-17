@@ -12,8 +12,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     create_version_file(&target_bin_path)?;
 
-    let binaries_dir = current_dir.join("binaries");
-    copy_binaries(binaries_dir, &target_bin_path)?;
+    // let binaries_dir = current_dir.join("binaries");
+    // copy_binaries(binaries_dir, &target_bin_path)?;
 
     #[cfg(target_os = "windows")] {
         let resources_file = current_dir.join("resources").join("resources.rc");
@@ -33,6 +33,8 @@ fn create_version_file(path: &PathBuf) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+#[deprecated]
+#[allow(dead_code)]
 fn copy_binaries(binaries_dir: PathBuf, path: &PathBuf) -> Result<(), Box<dyn Error>> {
     let platform_string = std::env::consts::OS;
 

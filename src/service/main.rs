@@ -8,6 +8,7 @@ use octocrab::models::repos::Asset;
 use reqwest::Url;
 use semver::{Version, VersionReq};
 use tao::{event_loop::{EventLoop, ControlFlow}, menu::{ContextMenu, MenuItemAttributes, MenuId}, system_tray::{SystemTrayBuilder, SystemTray}, TrayId, event::Event};
+use native_dialog::{MessageDialog, MessageType};
 use rust_embed::RustEmbed;
 
 use config::{DATA_DIR, STREMIO_URL, UPDATE_REPO_OWNER, UPDATE_REPO_NAME, UPDATE_FILE_NAME, UPDATE_FILE_EXT};
@@ -59,9 +60,21 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 match response {
                     Some(update) => {
                         info!("Found update v{}", update.version.to_string());
-                        run_updater(update.file.browser_download_url);
-                        remove_lock_file(lock_path);
-                        return Ok(());
+
+                        let title = "Stremio Service";
+                        let message = format!("Update v{} is available.\nDo you want to update now?", update.version.to_string());
+                        let do_update = MessageDialog::new()
+                            .set_type(MessageType::Info)
+                            .set_title(title)
+                            .set_text(&message)
+                            .show_confirm()
+                            .unwrap();
+
+                        if do_update {
+                            run_updater(update.file.browser_download_url);
+                            remove_lock_file(lock_path);
+                            return Ok(());
+                        }
                     },
                     None => {}
                 }

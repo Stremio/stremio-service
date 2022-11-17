@@ -1,6 +1,8 @@
 use std::{error::Error, fs, path::PathBuf};
 
 fn main() -> Result<(), Box<dyn Error>> {
+    println!("cargo:rerun-if-changed=src/");
+
     let current_dir = std::env::current_dir()?;
     let out_dir = current_dir.join("target");
 

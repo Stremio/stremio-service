@@ -106,7 +106,7 @@
                     
                     <Component Id='binary0' Guid='*'>
                         <File
-                            Id='exe0'
+                            Id='StremioService'
                             Name='service.exe'
                             DiskId='1'
                             Source='$(var.CargoTargetBinDir)\service.exe'
@@ -114,7 +114,7 @@
                     </Component>
                     <Component Id='binary1' Guid='*'>
                         <File
-                            Id='exe1'
+                            Id='StremioUpdater'
                             Name='updater.exe'
                             DiskId='1'
                             Source='$(var.CargoTargetBinDir)\updater.exe'
@@ -122,7 +122,7 @@
                     </Component>
                     <Component Id='binary2' Guid='*'>
                         <File
-                            Id='exe2'
+                            Id='Node'
                             Name='node.exe'
                             DiskId='1'
                             Source='$(var.CargoTargetBinDir)\node.exe'
@@ -130,7 +130,7 @@
                     </Component>
                     <Component Id='binary3' Guid='*'>
                         <File
-                            Id='exe3'
+                            Id='FFMPEG'
                             Name='ffmpeg.exe'
                             DiskId='1'
                             Source='$(var.CargoTargetBinDir)\ffmpeg.exe'
@@ -157,6 +157,18 @@
                         KeyPath="yes" />
                 </Component>
             </Directory>
+
+            <Component Id="ApplicationAutoStart" Guid="*">
+                <RegistryValue
+                    Id="RegValue"
+                    Root="HKMU"
+                    Action="write"
+                    Key="Software\Microsoft\Windows\CurrentVersion\Run"
+                    Name="Stremio Service"
+                    Value="[APPLICATIONFOLDER]service.exe"
+                    Type="string" />
+                <Condition>1</Condition>
+            </Component>
         </Directory>
 
         <Feature
@@ -185,12 +197,23 @@
             Title='Desktop Shortcut'
             Description='Create a desktop shortcut.'
             Level='1'
-            ConfigurableDirectory='APPLICATIONFOLDER'
             AllowAdvertise='no'
             Display='expand'
             Absent='disallow'>
 
             <ComponentRef Id='ApplicationShortcutDesktop' />
+        </Feature>
+
+        <Feature
+            Id='AutoStart'
+            Title='Autostart'
+            Description='Launch Stremio Service at launch.'
+            Level='1'
+            AllowAdvertise='no'
+            Display='expand'
+            Absent='disallow'>
+
+            <ComponentRef Id='ApplicationAutoStart' />
         </Feature>
 
         <SetProperty Id='ARPINSTALLLOCATION' Value='[APPLICATIONFOLDER]' After='CostFinalize'/>
@@ -217,6 +240,11 @@
         -->
         <!--<Property Id='ARPHELPLINK' Value='ChangeMe'/>-->
 
+        <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Launch Stremio Service" />
+        <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
+        <Property Id="WixShellExecTarget" Value="[#StremioService]" />
+        <CustomAction Id="LaunchApplication" BinaryKey="WixCA" DllEntry="WixShellExec" Impersonate="yes" />
+
         <UI>
             <UIRef Id='WixUI_FeatureTree'/>
             <!--
@@ -229,6 +257,13 @@
             <!--<Publish Dialog='WelcomeDlg' Control='Next' Event='NewDialog' Value='CustomizeDlg' Order='99'>1</Publish>-->
             <!--<Publish Dialog='CustomizeDlg' Control='Back' Event='NewDialog' Value='WelcomeDlg' Order='99'>1</Publish>-->
             
+            <Publish
+                Dialog="ExitDialog"
+                Control="Finish"
+                Event="DoAction"
+                Value="LaunchApplication">
+                1
+            </Publish>
         </UI>
 
         <!--

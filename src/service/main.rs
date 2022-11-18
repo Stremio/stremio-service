@@ -12,6 +12,10 @@ use updater::{fetch_update, run_updater};
 use server::Server;
 use stremio_service::{config::{DATA_DIR, STREMIO_URL}, shared::load_icon};
 
+const DESKTOP_FILE_PATH: &str = "/usr/share/applications";
+const DESKTOP_FILE_NAME: &str = "com.stremio.service.desktop";
+const AUTOSTART_CONFIG_PATH: &str = ".config/autostart";
+
 #[derive(RustEmbed)]
 #[folder = "icons"]
 struct Icons;
@@ -28,9 +32,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let options = Options::parse();
 
-    let data_location = dirs::home_dir()
-        .expect("Failed to get home dir")
-        .join(DATA_DIR);
+    let home_dir = dirs::home_dir()
+        .expect("Failed to get home dir");
+    let data_location = home_dir.join(DATA_DIR);
 
     std::fs::create_dir_all(data_location.clone())?;
 
@@ -41,6 +45,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     std::fs::File::create(lock_path.clone())?;
+
+    #[cfg(target_os = "linux")]
+    make_it_autostart(home_dir);
 
     #[cfg(not(target_os = "linux"))]
     if !options.skip_updater {
@@ -109,6 +116,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
             _ => (),
         }
     });
+}
+
+fn make_it_autostart(home_dir: PathBuf) {
+    let from = PathBuf::from(DESKTOP_FILE_PATH).join(DESKTOP_FILE_NAME);
+    let to = PathBuf::from(home_dir).join(AUTOSTART_CONFIG_PATH).join(DESKTOP_FILE_NAME);
+
+    if !to.exists() {
+        if let Err(e) = std::fs::copy(from, to) {
+            error!("Failed to copy desktop file to autostart location: {}", e);
+        }
+    }
 }
 
 fn remove_lock_file(path: PathBuf) {

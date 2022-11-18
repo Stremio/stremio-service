@@ -5,9 +5,11 @@ use std::{error::Error, path::PathBuf};
 use log::{error, info};
 use clap::Parser;
 use tao::{event_loop::{EventLoop, ControlFlow}, menu::{ContextMenu, MenuItemAttributes, MenuId}, system_tray::{SystemTrayBuilder, SystemTray}, TrayId, event::Event};
+#[cfg(not(target_os = "linux"))]
 use native_dialog::{MessageDialog, MessageType};
 use rust_embed::RustEmbed;
 
+#[cfg(not(target_os = "linux"))]
 use updater::{fetch_update, run_updater};
 use server::Server;
 use stremio_service::{config::{DATA_DIR, STREMIO_URL}, shared::load_icon};
@@ -30,6 +32,7 @@ pub struct Options {
 async fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
 
+    #[cfg(not(target_os = "linux"))]
     let options = Options::parse();
 
     let home_dir = dirs::home_dir()

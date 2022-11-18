@@ -61,12 +61,12 @@ assets = [
 [package.metadata.generate-rpm]
 # post_install_script = "gnome_version=$(gnome-shell --version  | awk '{print $NF}') && echo https://extensions.gnome.org/extension-data/appindicatorsupportrgcjonas.gmail.com.GNOME_VERSION.shell-extension.zip | sed -e s/GNOME_VERSION/$gnome_version/g"
 assets = [
-    [ "target/release/service", "/usr/bin/stremio-service/service", "755" ],
-    [ "binaries/node-linux", "/usr/bin/stremio-service/node", "755" ],
-    [ "binaries/ffmpeg-linux", "/usr/bin/stremio-service/ffmpeg", "755" ],
-    [ "resources/stremio.service", "/etc/systemd/system/stremio.service", "644" ],
-    [ "resources/com.stremio.service.desktop", "/usr/share/applications/com.stremio.service.desktop", "644" ],
-    [ "resources/com.stremio.service.svg", "/usr/share/icons/hicolor/scalable/apps/com.stremio.service.svg", "644" ],
+    { source = "target/release/service", dest = "/usr/bin/stremio-service/service", mode = "755" },
+    { source = "target/release/node", dest = "/usr/bin/stremio-service/node", mode = "755" },
+    { source = "target/release/ffmpeg", dest = "/usr/bin/stremio-service/ffmpeg", mode = "755" },
+    { source = "resources/stremio.service", dest = "/etc/systemd/system/stremio.service", mode = "644" },
+    { source = "resources/com.stremio.service.desktop", dest = "/usr/share/applications/com.stremio.service.desktop", mode = "644" },
+    { source = "resources/com.stremio.service.svg", dest = "/usr/share/icons/hicolor/scalable/apps/com.stremio.service.svg", mode = "644" },
 ]
 
 [package.metadata.generate-rpm.requires]

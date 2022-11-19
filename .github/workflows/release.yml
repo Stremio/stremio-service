@@ -34,13 +34,13 @@ jobs:
         name: Zip release for macos
         uses: vimtor/action-zip@v1
         with:
-          files: target/release/ffmpeg target/release/node target/release/service target/release/version
+          files: target/release/ffmpeg target/release/node target/release/service
           dest: stremio-service-macos.zip
       - if: matrix.platform == 'windows-latest'
         name: Zip release for windows
         uses: vimtor/action-zip@v1
         with:
-          files: target/release/ffmpeg.exe target/release/node.exe target/release/service.exe target/release/version
+          files: target/release/ffmpeg.exe target/release/node.exe target/release/service.exe
           dest: stremio-service-windows.zip
       - if: matrix.platform == 'macos-latest'
         name: Upload macos release

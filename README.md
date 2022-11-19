@@ -17,6 +17,11 @@ apt install build-essential libgtk-3-dev pkg-config libssl-dev libayatana-appind
 cargo install cargo-deb
 ```
 
+### Run
+```
+RUST_LOG=info cargo run --bin service
+```
+
 ### Build
 ```
 cargo build --release

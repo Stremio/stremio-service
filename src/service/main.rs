@@ -2,6 +2,7 @@ mod updater;
 mod server;
 
 use std::{error::Error, path::PathBuf};
+use fslock::LockFile;
 use log::{error, info};
 use clap::Parser;
 use tao::{event_loop::{EventLoop, ControlFlow}, menu::{ContextMenu, MenuItemAttributes, MenuId}, system_tray::{SystemTrayBuilder, SystemTray}, TrayId, event::Event};
@@ -42,12 +43,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
     std::fs::create_dir_all(data_location.clone())?;
 
     let lock_path = data_location.join("lock");
-    if lock_path.exists() {
+    let mut lockfile = LockFile::open(&lock_path)?;
+
+    if !lockfile.try_lock()? {
         info!("Exiting, another instance is running.");
         return Ok(())
     }
-
-    std::fs::File::create(lock_path.clone())?;
 
     #[cfg(target_os = "linux")]
     make_it_autostart(home_dir);
@@ -74,7 +75,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
                         if do_update {
                             run_updater(update.file.browser_download_url);
-                            remove_lock_file(lock_path);
                             return Ok(());
                         }
                     },
@@ -114,7 +114,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
             },
             Event::LoopDestroyed => {
                 server.stop();
-                remove_lock_file(lock_path.clone());
             },
             _ => (),
         }
@@ -130,11 +129,6 @@ fn make_it_autostart(home_dir: PathBuf) {
             error!("Failed to copy desktop file to autostart location: {}", e);
         }
     }
-}
-
-fn remove_lock_file(path: PathBuf) {
-    std::fs::remove_file(path.clone())
-        .expect("Failed to delete lock file.");
 }
 
 fn create_system_tray(event_loop: &EventLoop<()>) -> Result<(Option<SystemTray>, MenuId, MenuId), Box<dyn Error>> {

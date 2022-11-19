@@ -13,11 +13,10 @@ use rust_embed::RustEmbed;
 #[cfg(not(target_os = "linux"))]
 use updater::{fetch_update, run_updater};
 use server::Server;
-use stremio_service::{config::{DATA_DIR, STREMIO_URL}, shared::load_icon};
-
-const DESKTOP_FILE_PATH: &str = "/usr/share/applications";
-const DESKTOP_FILE_NAME: &str = "com.stremio.service.desktop";
-const AUTOSTART_CONFIG_PATH: &str = ".config/autostart";
+use stremio_service::{
+    config::{DATA_DIR, STREMIO_URL, DESKTOP_FILE_PATH, DESKTOP_FILE_NAME, AUTOSTART_CONFIG_PATH},
+    shared::load_icon
+};
 
 #[derive(RustEmbed)]
 #[folder = "icons"]

@@ -122,8 +122,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
 fn make_it_autostart(home_dir: PathBuf) {
     let autostart_path = PathBuf::from(AUTOSTART_CONFIG_PATH);
     if !autostart_path.exists() {
-        std::fs::create_dir_all(autostart_path)
-            .expect("Failed to create autostart config path");
+        if let Err(e) = std::fs::create_dir_all(autostart_path) {
+            error!("Failed to create autostart config path: {}", e);
+        }
     }
 
     let from = PathBuf::from(DESKTOP_FILE_PATH).join(DESKTOP_FILE_NAME);

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.stremio.Service</id>
+  
+  <name>Stremio Service</name>
+  <summary>Freedom to Stream</summary>
+  <developer_name>Stremio</developer_name>
+  <url type="homepage">https://stremio.com</url>
+  
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+  
+  <description>
+    <p>
+      Lets you run Stremio server in the background.
+    </p>
+  </description>
+  
+  <launchable type="desktop-id">com.stremio.Service.desktop</launchable>
+
+  <releases>
+    <release version="0.2.0" date="2022-11-19" />
+    <release version="0.1.0" date="2022-11-15" />
+  </releases>
+</component>

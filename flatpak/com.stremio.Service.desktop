@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Stremio Service
+Comment=Freedom To Stream
+Exec=/app/bin/stremio-service/stremio
+Terminal=false
+Type=Application
+Categories=Utility;Video;Player;
+Keywords=Stremio;Media;Play;
+StartupNotify=true
+Icon=com.stremio.Service

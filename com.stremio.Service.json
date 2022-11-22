@@ -31,9 +31,9 @@
             "install -Dm755 ./target/release/service -t /app/bin/stremio-service/",
             "install -Dm755 ./target/release/node -t /app/bin/stremio-service/",
             "install -Dm755 ./target/release/ffmpeg -t /app/bin/stremio-service/",
-            "install -Dm644 ./resources/flatpak/com.stremio.Service.desktop /app/share/applications/com.stremio.Service.desktop",
-            "install -Dm644 ./resources/flatpak/com.stremio.Service.svg /app/share/icons/hicolor/scalable/apps/com.stremio.Service.svg",
-            "install -Dm644 ./resources/flatpak/com.stremio.Service.appdata.xml /app/share/metainfo/com.stremio.Service.appdata.xml"
+            "install -Dm644 ./flatpak/com.stremio.Service.desktop /app/share/applications/com.stremio.Service.desktop",
+            "install -Dm644 ./flatpak/com.stremio.Service.svg /app/share/icons/hicolor/scalable/apps/com.stremio.Service.svg",
+            "install -Dm644 ./flatpak/com.stremio.Service.appdata.xml /app/share/metainfo/com.stremio.Service.appdata.xml"
         ],
         "sources": [
             {
@@ -43,7 +43,7 @@
             "generated-sources.json"
         ],
         "modules": [
-            "shared-modules/libappindicator/libappindicator-gtk3-12.10.json"
+            "flatpak/shared-modules/libappindicator/libappindicator-gtk3-12.10.json"
         ]
     }]
 }

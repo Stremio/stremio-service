@@ -1,0 +1,32 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - name: Rust setup
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: Build
+        run: cargo build --release
+      - name: Zip release for macos
+        uses: vimtor/action-zip@v1
+        with:
+          files: target/release/ffmpeg target/release/node target/release/service
+          dest: stremio-service-macos.zip
+      - name: Upload macos release
+        uses: svenstaro/upload-release-action@v1-release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: stremio-service-macos.zip
+          asset_name: stremio-service-macos.zip
+          tag: ${{ github.ref }}
+          overwrite: true

@@ -1,0 +1,32 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - name: Rust setup
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: Build
+        run: cargo build --release
+      - name: Zip release for windows
+        uses: vimtor/action-zip@v1
+        with:
+          files: target/release/ffmpeg.exe target/release/node.exe target/release/service.exe
+          dest: stremio-service-windows.zip
+      - name: Upload windows release
+        uses: svenstaro/upload-release-action@v1-release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: stremio-service-windows.zip
+          asset_name: stremio-service-windows.zip
+          tag: ${{ github.ref }}
+          overwrite: true

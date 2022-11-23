@@ -1,0 +1,41 @@
+name: Flatpak Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  flatpak-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - name: Update git submodules
+        run: git submodule update --init --recursive
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install build-essential libgtk-3-dev pkg-config libssl-dev libayatana-appindicator3-dev
+      - name: Rust setup
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: Setup flatpak
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install flatpak-builder
+          sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          sudo flatpak install -y org.gnome.Sdk//43
+          sudo flatpak install -y org.gnome.Platform//43
+          sudo flatpak install -y org.freedesktop.Sdk.Extension.rust-stable//22.08
+      - name: Build
+        run: sh ./build-flatpak.sh
+      - name: Upload flatpak release
+        uses: svenstaro/upload-release-action@v1-release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: flatpak/com.stremio.Service.flatpak
+          asset_name: com.stremio.Service.flatpak
+          tag: ${{ github.ref }}
+          overwrite: true

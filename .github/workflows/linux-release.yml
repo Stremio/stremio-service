@@ -1,4 +1,4 @@
-name: Release
+name: Linux Release
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - 'v*'
 
 jobs:
-  release:
+  linux-release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository

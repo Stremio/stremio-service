@@ -17,6 +17,11 @@ apt install build-essential libgtk-3-dev pkg-config libssl-dev libayatana-appind
 cargo install cargo-deb
 ```
 
+#### MacOS
+```
+npm install -g create-dmg && brew install graphicsmagick imagemagick
+```
+
 ### Run
 ```
 RUST_LOG=info cargo run --bin service
@@ -43,4 +48,9 @@ cargo deb
 #### Fedora
 ```
 cargo generate-rpm
+```
+
+#### MacOS
+```
+cargo run --bin build-macos && create-dmg --overwrite target/macos/*.app target/macos
 ```

@@ -8,6 +8,7 @@ struct MacOSMetadata {
     display_name: String,
     identifier: String,
     icon: Vec<String>,
+    copyright: String,
     executable: String,
     bins: Vec<Vec<String>>,
 }
@@ -59,9 +60,11 @@ fn main() -> Result<(), Box<dyn Error>> {
                 <string>{}</string>
                 <key>CFBundleExecutable</key>
                 <string>{}</string>
+                <key>NSHumanReadableCopyright</key>
+                <string>{}</string>
             </dict>
         </plist>
-    ", metadata.display_name, metadata.identifier, env!("CARGO_PKG_VERSION"), env!("CARGO_PKG_VERSION"), metadata.icon[1], metadata.executable);
+    ", metadata.display_name, metadata.identifier, env!("CARGO_PKG_VERSION"), env!("CARGO_PKG_VERSION"), metadata.icon[1], metadata.executable, metadata.copyright);
     std::fs::write(contents_path.join("Info.plist"), info_plist)?;
 
     let bins_path = contents_path

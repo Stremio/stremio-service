@@ -42,6 +42,8 @@ tokio = { version = "1.21.2", features = ["full"] }
 zip-extract = "0.1.1"
 
 [build-dependencies]
+bytes = "1.0.1"
+flate2 = "1.0.25"
 reqwest = { version = "0.11.12", features = ["blocking"] }
 tar = "0.4.38"
 xz = "0.1.0"

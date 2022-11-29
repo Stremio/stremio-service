@@ -1,16 +1,24 @@
 use std::{error::Error, fs, path::PathBuf};
 
+const STREMIO_SERVER: &str = "https://dl.strem.io/four/master/server.js";
+
 fn main() -> Result<(), Box<dyn Error>> {
     println!("cargo:rerun-if-changed=src/");
 
     let current_dir = std::env::current_dir()?;
-    let out_dir = current_dir.join("target");
+    let target_dir = current_dir.join("target");
 
     let target_bin_path = if cfg!(debug_assertions) {
-        out_dir.join("debug")
+        target_dir.join("debug")
     } else {
-        out_dir.join("release")
+        target_dir.join("release")
     };
+
+    let server_js_target = target_bin_path.join("server.js");
+    if !server_js_target.exists() {
+        let server_js_file = reqwest::blocking::get(STREMIO_SERVER)?.bytes()?;
+        fs::write(target_bin_path.join("server.js"), server_js_file)?;
+    }
 
     let binaries_dir = current_dir.join("binaries");
     copy_binaries(binaries_dir, &target_bin_path)?;

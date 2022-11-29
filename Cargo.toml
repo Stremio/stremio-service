@@ -65,7 +65,7 @@ section = "Stremio;Media;Play;"
 priority = "optional"
 assets = [
     ["target/release/service", "/usr/bin/stremio-service/service", "755"],
-    ["binaries/node-linux", "/usr/bin/stremio-service/node", "755"],
+    ["target/release/node", "/usr/bin/stremio-service/node", "755"],
     ["binaries/ffmpeg-linux", "/usr/bin/stremio-service/ffmpeg", "755"],
     ["resources/com.stremio.service.desktop", "/usr/share/applications/com.stremio.service.desktop", "644"],
     ["resources/com.stremio.service.svg", "/usr/share/icons/hicolor/scalable/apps/com.stremio.service.svg", "644"],
@@ -94,6 +94,6 @@ executable = "service"
 bins = [
     ["target/release/service", "service"],
     ["target/release/updater", "updater"],
-    ["binaries/node-macos", "node"],
+    ["target/release/node", "node"],
     ["binaries/ffmpeg-macos", "ffmpeg"]
 ]

@@ -1,44 +1,27 @@
-use std::{fs, error::Error, process::{Child, Command}, path::PathBuf};
+use std::{error::Error, process::{Child, Command}};
 use log::{error, info};
 
-use stremio_service::{config::STREMIO_SERVER_URL, shared::join_current_exe_dir};
+use stremio_service::shared::join_current_exe_dir;
 
 pub struct Server {
-    data_location: PathBuf,
-    server_location: PathBuf,
     pub process: Option<Child>
 }
 
 impl Server {
-    pub fn new(data_location: PathBuf) -> Self {
-        let server_location = data_location.join("server.js");
-
+    pub fn new() -> Self {
         Self {
-            data_location,
-            server_location,
             process: None
         }
-    }
-
-    pub async fn update(&self) -> Result<(), Box<dyn Error>> {
-        let server_js_file = reqwest::get(STREMIO_SERVER_URL)
-            .await?
-            .text()
-            .await?;
-        
-        fs::create_dir_all(self.data_location.clone())?;
-        fs::write(self.server_location.clone(), server_js_file)?;
-
-        Ok(())
     }
 
     pub fn start(&mut self) -> Result<(), Box<dyn Error>> {
         let node_binary_path = join_current_exe_dir("node");
         let ffmpeg_binary_path = join_current_exe_dir("ffmpeg");
+        let server_location = join_current_exe_dir("server.js");
 
         let mut command = Command::new(node_binary_path);
         command.env("FFMPEG_BIN", ffmpeg_binary_path);
-        command.arg(self.server_location.clone());
+        command.arg(server_location);
 
         match command.spawn() {
             Ok(process) => {

@@ -84,8 +84,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    let mut server = Server::new(data_location);
-    server.update().await?;
+    let mut server = Server::new();
     server.start()?;
 
     let event_loop = EventLoop::new();

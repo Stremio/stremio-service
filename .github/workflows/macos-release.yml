@@ -27,7 +27,7 @@ jobs:
       - name: Build
         run: cargo build --release
       - name: Package
-        run: cargo run --bin build-macos && create-dmg --overwrite target/macos/*.app target/macos
+        run: cargo run --bin build-macos && create-dmg --overwrite target/macos/*.app target/macos 2> /dev/null
       - name: Upload dmg release
         uses: svenstaro/upload-release-action@v1-release
         with:

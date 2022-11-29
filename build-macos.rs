@@ -37,6 +37,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let bundle_path = target_path
         .join(metadata.name + ".app");
+
+    if bundle_path.exists() {
+        std::fs::remove_dir_all(bundle_path.clone())?;
+    }
     std::fs::create_dir_all(bundle_path.clone())?;
 
     let contents_path = bundle_path

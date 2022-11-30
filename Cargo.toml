@@ -93,6 +93,7 @@ display_name = "Stremio Service"
 identifier = "com.stremio.service"
 icon = ["resources/service.icns", "StremioService.icns"]
 copyright = "Copyright © 2022 Smart Code OOD"
+url_scheme = "stremio"
 executable = "service"
 bins = [
     ["target/release/service", "service"],

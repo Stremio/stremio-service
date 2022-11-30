@@ -17,6 +17,7 @@ use stremio_service::{
     config::{DATA_DIR, STREMIO_URL, DESKTOP_FILE_PATH, DESKTOP_FILE_NAME, AUTOSTART_CONFIG_PATH},
     shared::load_icon
 };
+use urlencoding::encode;
 
 #[derive(RustEmbed)]
 #[folder = "icons"]
@@ -26,14 +27,22 @@ struct Icons;
 pub struct Options {
     #[clap(short, long)]
     pub skip_updater: bool,
+    #[clap(short, long)]
+    pub open: Option<String>,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
 
-    #[cfg(not(target_os = "linux"))]
     let options = Options::parse();
+
+    if let Some(open_url) = options.open {
+        if open_url.starts_with("stremio://") {
+            let url = open_url.replace("stremio://", "");
+            open_stremio_web(Some(format!("https://{}", url)));
+        }
+    }
 
     let home_dir = dirs::home_dir()
         .expect("Failed to get home dir");
@@ -100,10 +109,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 ..
             } => {
                 if menu_id == open_item_id {
-                    match open::that(STREMIO_URL) {
-                        Ok(_) => info!("Opened Stremio Web in the browser"),
-                        Err(e) => error!("Failed to open Stremio Web: {}", e)
-                    }
+                    open_stremio_web(None);
                 }
                 if menu_id == quit_item_id {
                     system_tray.take();
@@ -160,4 +166,16 @@ fn create_system_tray(event_loop: &EventLoop<()>) -> Result<(Option<SystemTray>,
         open_item.id(),
         quit_item.id()
     ))
+}
+
+fn open_stremio_web(addon_manifest_url: Option<String>) {
+    let mut url = STREMIO_URL.to_string();
+    if let Some(p) = addon_manifest_url {
+        url = STREMIO_URL.to_string() + "/#/addons?addon=" + &encode(&p);
+    }
+
+    match open::that(url) {
+        Ok(_) => info!("Opened Stremio Web in the browser"),
+        Err(e) => error!("Failed to open Stremio Web: {}", e)
+    }
 }

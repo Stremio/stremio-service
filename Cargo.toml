@@ -39,6 +39,7 @@ semver = "1.0.14"
 serde = "1.0.148"
 tao = { version = "0.15.3", features = ["tray"] }
 tokio = { version = "1.21.2", features = ["full"] }
+urlencoding = "2.1.2"
 zip-extract = "0.1.1"
 
 [build-dependencies]

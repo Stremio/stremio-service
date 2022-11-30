@@ -1,7 +1,8 @@
 [Desktop Entry]
 Name=Stremio Service
 Comment=Freedom To Stream
-Exec=/app/bin/stremio-service/service
+Exec=/app/bin/stremio-service/service -o '%u'
+MimeType=x-scheme-handler/stremio;
 Terminal=false
 Type=Application
 Categories=Utility;Video;Player;

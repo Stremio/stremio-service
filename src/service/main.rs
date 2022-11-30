@@ -14,7 +14,7 @@ use rust_embed::RustEmbed;
 use updater::{fetch_update, run_updater};
 use server::Server;
 use stremio_service::{
-    config::{DATA_DIR, STREMIO_URL, DESKTOP_FILE_PATH, DESKTOP_FILE_NAME, AUTOSTART_CONFIG_PATH},
+    config::{DATA_DIR, STREMIO_URL, DESKTOP_FILE_PATH, DESKTOP_FILE_NAME, AUTOSTART_CONFIG_PATH, LAUNCH_AGENTS_PATH, APP_IDENTIFIER, APP_NAME},
     shared::load_icon
 };
 use urlencoding::encode;
@@ -58,7 +58,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         return Ok(())
     }
 
-    #[cfg(target_os = "linux")]
     make_it_autostart(home_dir);
 
     #[cfg(not(target_os = "linux"))]
@@ -125,19 +124,56 @@ async fn main() -> Result<(), Box<dyn Error>> {
 }
 
 fn make_it_autostart(home_dir: PathBuf) {
-    let autostart_path = PathBuf::from(AUTOSTART_CONFIG_PATH);
-    if !autostart_path.exists() {
-        if let Err(e) = std::fs::create_dir_all(autostart_path) {
-            error!("Failed to create autostart config path: {}", e);
+    #[cfg(target_os = "linux")] {
+        let autostart_path = PathBuf::from(AUTOSTART_CONFIG_PATH);
+        if !autostart_path.exists() {
+            if let Err(e) = std::fs::create_dir_all(autostart_path) {
+                error!("Failed to create autostart config path: {}", e);
+            }
+        }
+
+        let from = PathBuf::from(DESKTOP_FILE_PATH).join(DESKTOP_FILE_NAME);
+        let to = PathBuf::from(home_dir).join(AUTOSTART_CONFIG_PATH).join(DESKTOP_FILE_NAME);
+
+        if !to.exists() {
+            if let Err(e) = std::fs::copy(from, to) {
+                error!("Failed to copy desktop file to autostart location: {}", e);
+            }
         }
     }
 
-    let from = PathBuf::from(DESKTOP_FILE_PATH).join(DESKTOP_FILE_NAME);
-    let to = PathBuf::from(home_dir).join(AUTOSTART_CONFIG_PATH).join(DESKTOP_FILE_NAME);
+    #[cfg(target_os = "macos")] {
+        let plist_launch_agent = format!("
+            <?xml version=\"1.0\" encoding=\"UTF-8\"?>
+            <!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">
+            <plist version=\"1.0\">
+            <dict>  
+                <key>Label</key>
+                <string>{}</string>
+                <key>ProgramArguments</key>
+                <array>
+                    <string>/usr/bin/open</string>
+                    <string>-a</string>
+                    <string>{}</string>
+                </array>
+                <key>RunAtLoad</key>
+                <true/>
+            </dict>
+            </plist>
+        ", APP_IDENTIFIER, APP_NAME);
 
-    if !to.exists() {
-        if let Err(e) = std::fs::copy(from, to) {
-            error!("Failed to copy desktop file to autostart location: {}", e);
+        let launch_agents_path = home_dir.join(LAUNCH_AGENTS_PATH);
+        if !launch_agents_path.exists() {
+            if let Err(e) = std::fs::create_dir_all(launch_agents_path.clone()) {
+                error!("Failed to create LaunchAgents dir: {}", e);
+            }
+        }
+
+        let plist_path = launch_agents_path.join(format!("{}.plist", APP_IDENTIFIER));
+        if !plist_path.exists() {
+            if let Err(e) = std::fs::write(plist_path, plist_launch_agent.as_bytes()) {
+                error!("Failed to create a plist file in LaunchAgents dir: {}", e);
+            }
         }
     }
 }

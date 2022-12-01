@@ -93,6 +93,14 @@
                             Source='$(var.CargoTargetBinDir)\ffmpeg.exe'
                             KeyPath='yes'/>
                     </Component>
+                    <Component Id='binary4' Guid='*'>
+                        <File
+                            Id='server'
+                            Name='server.js'
+                            DiskId='1'
+                            Source='$(var.CargoTargetBinDir)\server.js'
+                            KeyPath='yes'/>
+                    </Component>
                 </Directory>
             </Directory>
 
@@ -114,6 +122,19 @@
                         KeyPath="yes" />
                 </Component>
             </Directory>
+
+            <Component Id="ApplicationProtocol" Guid="*">
+                <RegistryKey 
+                    Root="HKCR"
+                    Key="stremio"
+                    Action="createAndRemoveOnUninstall">
+                    <RegistryValue Type="string" Name="URL Protocol" Value="" />
+                    <RegistryValue Type="string" Value="URL:Stremio Protocol" />
+                    <RegistryKey Key="shell\open\command">
+                        <RegistryValue Type="string" Value="&quot;[APPLICATIONFOLDER]service.exe&quot; &quot;-o&quot; &quot;%1&quot;" />
+                    </RegistryKey>
+                </RegistryKey>
+            </Component>
 
             <Component Id="ApplicationAutoStart" Guid="*">
                 <RegistryValue
@@ -143,6 +164,7 @@
             <ComponentRef Id='binary1'/>
             <ComponentRef Id='binary2'/>
             <ComponentRef Id='binary3'/>
+            <ComponentRef Id='binary4'/>
         </Feature>
 
         <Feature
@@ -155,6 +177,18 @@
             Absent='disallow'>
 
             <ComponentRef Id='ApplicationShortcutDesktop' />
+        </Feature>
+
+        <Feature
+            Id='Protocol'
+            Title='Stremio Protocol'
+            Description='Use stremio:// protocol.'
+            Level='1'
+            AllowAdvertise='no'
+            Display='expand'
+            Absent='disallow'>
+
+            <ComponentRef Id='ApplicationProtocol' />
         </Feature>
 
         <Feature

@@ -15,7 +15,7 @@ use updater::{fetch_update, run_updater};
 use server::Server;
 use stremio_service::{
     config::{DATA_DIR, STREMIO_URL, DESKTOP_FILE_PATH, DESKTOP_FILE_NAME, AUTOSTART_CONFIG_PATH, LAUNCH_AGENTS_PATH, APP_IDENTIFIER, APP_NAME},
-    shared::load_icon
+    shared::{load_icon, create_dir_if_does_not_exists}
 };
 use urlencoding::encode;
 
@@ -39,8 +39,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     if let Some(open_url) = options.open {
         if open_url.starts_with("stremio://") {
-            let url = open_url.replace("stremio://", "");
-            open_stremio_web(Some(format!("https://{}", url)));
+            let url = open_url.replace("stremio://", "https://");
+            open_stremio_web(Some(url));
         }
     }
 
@@ -125,12 +125,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 fn make_it_autostart(home_dir: PathBuf) {
     #[cfg(target_os = "linux")] {
-        let autostart_path = PathBuf::from(AUTOSTART_CONFIG_PATH);
-        if !autostart_path.exists() {
-            if let Err(e) = std::fs::create_dir_all(autostart_path) {
-                error!("Failed to create autostart config path: {}", e);
-            }
-        }
+        create_dir_if_does_not_exists(AUTOSTART_CONFIG_PATH);
 
         let from = PathBuf::from(DESKTOP_FILE_PATH).join(DESKTOP_FILE_NAME);
         let to = PathBuf::from(home_dir).join(AUTOSTART_CONFIG_PATH).join(DESKTOP_FILE_NAME);
@@ -162,12 +157,7 @@ fn make_it_autostart(home_dir: PathBuf) {
             </plist>
         ", APP_IDENTIFIER, APP_NAME);
 
-        let launch_agents_path = home_dir.join(LAUNCH_AGENTS_PATH);
-        if !launch_agents_path.exists() {
-            if let Err(e) = std::fs::create_dir_all(launch_agents_path.clone()) {
-                error!("Failed to create LaunchAgents dir: {}", e);
-            }
-        }
+        create_dir_if_does_not_exists(LAUNCH_AGENTS_PATH);
 
         let plist_path = launch_agents_path.join(format!("{}.plist", APP_IDENTIFIER));
         if !plist_path.exists() {
@@ -207,7 +197,7 @@ fn create_system_tray(event_loop: &EventLoop<()>) -> Result<(Option<SystemTray>,
 fn open_stremio_web(addon_manifest_url: Option<String>) {
     let mut url = STREMIO_URL.to_string();
     if let Some(p) = addon_manifest_url {
-        url = STREMIO_URL.to_string() + "/#/addons?addon=" + &encode(&p);
+        url = format!("{}/#/addons?addon={}", STREMIO_URL, &encode(&p));
     }
 
     match open::that(url) {

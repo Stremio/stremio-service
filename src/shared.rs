@@ -1,5 +1,6 @@
 use std::{env, path::PathBuf};
 use tao::system_tray;
+use log::error;
 
 pub fn load_icon(buffer: &[u8]) -> system_tray::Icon {
     let (icon_rgba, icon_width, icon_height) = {
@@ -27,4 +28,13 @@ pub fn get_current_exe_dir() -> PathBuf {
 pub fn join_current_exe_dir(append: &str) -> PathBuf {
     let current_exe_dir = get_current_exe_dir();
     current_exe_dir.join(PathBuf::from(append))
+}
+
+pub fn create_dir_if_does_not_exists(path_string: &str) {
+    let path = PathBuf::from(path_string);
+    if !path.exists() {
+        if let Err(e) = std::fs::create_dir_all(path.clone()) {
+            error!("Failed to create {:?} path: {}", path, e);
+        }
+    }
 }

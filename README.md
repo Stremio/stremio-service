@@ -17,6 +17,14 @@ apt install build-essential libgtk-3-dev pkg-config libssl-dev libayatana-appind
 cargo install cargo-deb
 ```
 
+#### Fedora
+```
+dnf install gtk3-devel
+```
+```
+cargo install generate-rpm
+```
+
 #### MacOS
 ```
 npm install -g create-dmg && brew install graphicsmagick imagemagick

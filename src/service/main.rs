@@ -1,10 +1,14 @@
 mod updater;
 mod server;
 
-use std::{error::Error, path::PathBuf};
+use std::{error::Error, path::PathBuf, sync::Once, collections::HashMap};
+use fruitbasket::{FruitCallbackKey, FruitObjcCallback, kAEGetURL, kInternetEventClass};
 use fslock::LockFile;
 use log::{error, info};
-use clap::Parser;
+use clap::{Parser};
+use objc::{runtime::{Object, Class, Sel}, msg_send, sel, sel_impl, declare::ClassDecl, Message};
+use objc_foundation::{NSObject, INSObject};
+use objc_id::{Shared, Id, WeakId};
 use tao::{event_loop::{EventLoop, ControlFlow}, menu::{ContextMenu, MenuItemAttributes, MenuId}, system_tray::{SystemTrayBuilder, SystemTray}, TrayId, event::Event};
 #[cfg(not(target_os = "linux"))]
 use native_dialog::{MessageDialog, MessageType};
@@ -30,6 +34,118 @@ pub struct Options {
     #[clap(short, long)]
     pub open: Option<String>,
 }
+
+struct ObjcWrapper<'a> {
+    objc: Id<ObjcSubclass, Shared>,
+    map: HashMap<FruitCallbackKey, FruitObjcCallback<'a>>,
+}
+
+impl<'a> ObjcWrapper<'a> {
+    fn take(&mut self) -> Id<ObjcSubclass, Shared> {
+        let weak = WeakId::new(&self.objc);
+        weak.load().unwrap()
+    }
+}
+
+enum ObjcSubclass {}
+
+unsafe impl Message for ObjcSubclass { }
+
+static OBJC_SUBCLASS_REGISTER_CLASS: Once = Once::new();
+
+impl ObjcSubclass {
+    /// Call a registered Rust callback
+    fn dispatch_cb(wrap_ptr: u64, key: FruitCallbackKey, obj: *mut Object) {
+        if wrap_ptr == 0 {
+            return;
+        }
+        let objcwrap: &mut ObjcWrapper = unsafe { &mut *(wrap_ptr as *mut ObjcWrapper) };
+        if let Some(ref cb) = objcwrap.map.get(&key) {
+            cb(obj);
+        }
+    }
+}
+
+/// Define an ObjC class and register it with the ObjC runtime
+impl INSObject for ObjcSubclass {
+    fn class() -> &'static Class {
+        OBJC_SUBCLASS_REGISTER_CLASS.call_once(|| {
+            let superclass = NSObject::class();
+            let mut decl = ClassDecl::new("ObjcSubclass", superclass).unwrap();
+            decl.add_ivar::<u64>("_rustwrapper");
+            
+            /// Callback for events from Apple's NSAppleEventManager
+            extern fn objc_apple_event(this: &Object, _cmd: Sel, event: u64, _reply: u64) {
+                let ptr: u64 = unsafe { *this.get_ivar("_rustwrapper") };
+                ObjcSubclass::dispatch_cb(ptr,
+                                          FruitCallbackKey::Method("handleEvent:withReplyEvent:"),
+                                          event as *mut Object);
+            }
+            /// NSApplication delegate callback
+            extern fn objc_did_finish(this: &Object, _cmd: Sel, event: u64) {
+                let ptr: u64 = unsafe { *this.get_ivar("_rustwrapper") };
+                ObjcSubclass::dispatch_cb(ptr,
+                                          FruitCallbackKey::Method("applicationDidFinishLaunching:"),
+                                          event as *mut Object);
+            }
+            /// NSApplication delegate callback
+            extern fn objc_will_finish(this: &Object, _cmd: Sel, event: u64) {
+                let ptr: u64 = unsafe { *this.get_ivar("_rustwrapper") };
+                ObjcSubclass::dispatch_cb(ptr,
+                                          FruitCallbackKey::Method("applicationWillFinishLaunching:"),
+                                          event as *mut Object);
+            }
+            /// NSApplication delegate callback
+            extern "C" fn objc_open_file(
+                this: &Object,
+                _cmd: Sel,
+                _application: u64,
+                file: u64,
+            ) -> bool {
+                let ptr: u64 = unsafe { *this.get_ivar("_rustwrapper") };
+                ObjcSubclass::dispatch_cb(
+                    ptr,
+                    FruitCallbackKey::Method("application:openFile:"),
+                    file as *mut Object,
+                );
+
+                true
+            }
+            /// Register the Rust ObjcWrapper instance that wraps this object
+            ///
+            /// In order for an instance of this ObjC owned object to reach back
+            /// into "pure Rust", it needs to know the location of Rust
+            /// functions.  This is accomplished by wrapping it in a Rust struct,
+            /// which is itself in a Box on the heap to ensure a fixed location
+            /// in memory.  The address of this wrapping struct is given to this
+            /// object by casting the Box into a raw pointer, and then casting
+            /// that into a u64, which is stored here.
+            extern fn objc_set_rust_wrapper(this: &mut Object, _cmd: Sel, ptr: u64) {
+                unsafe {this.set_ivar("_rustwrapper", ptr);}
+            }
+
+            unsafe {
+                // Register all of the above handlers as true ObjC selectors:
+                let f: extern fn(&mut Object, Sel, u64) = objc_set_rust_wrapper;
+                decl.add_method(sel!(setRustWrapper:), f);
+                let f: extern fn(&Object, Sel, u64, u64) = objc_apple_event;
+                decl.add_method(sel!(handleEvent:withReplyEvent:), f);
+                let f: extern fn(&Object, Sel, u64) = objc_did_finish;
+                decl.add_method(sel!(applicationDidFinishLaunching:), f);
+                let f: extern fn(&Object, Sel, u64) = objc_will_finish;
+                decl.add_method(sel!(applicationWillFinishLaunching:), f);
+                let f: extern "C" fn(&Object, Sel, u64, u64) -> bool = objc_open_file;
+                decl.add_method(sel!(application:openFile:), f);
+            }
+
+            decl.register();
+        });
+
+        Class::get("ObjcSubclass").unwrap()
+    }
+}
+
+static FINISHED_LAUNCHING: Once = Once::new();
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -101,6 +217,39 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     event_loop.run(move |event, _event_loop, control_flow| {
         *control_flow = ControlFlow::Wait;
+
+        FINISHED_LAUNCHING.call_once(|| {
+            unsafe {
+                let objc = ObjcSubclass::new().share();
+                let mut rustobjc = Box::new(ObjcWrapper {
+                    objc,
+                    map: HashMap::new(),
+                });
+                let ptr: u64 = &*rustobjc as *const ObjcWrapper as u64;
+                let _:() = msg_send![rustobjc.objc, setRustWrapper: ptr];
+
+                rustobjc.map.insert(FruitCallbackKey::Method("handleEvent:withReplyEvent:"), Box::new(move |event| {
+                    let url: String = fruitbasket::parse_url_event(event);
+                    info!("Received URL: {}", url);
+                    MessageDialog::new()
+                        .set_type(MessageType::Info)
+                        .set_text(&url)
+                        .show_confirm()
+                        .unwrap();
+                }));
+
+                let cls = Class::get("NSAppleEventManager").unwrap();
+                let manager: *mut Object = msg_send![cls, sharedAppleEventManager];
+                let objc = (*rustobjc).take();
+                let _:() = msg_send![
+                    manager,
+                    setEventHandler: objc
+                    andSelector: sel!(handleEvent:withReplyEvent:)
+                    forEventClass: kInternetEventClass
+                    andEventID: kAEGetURL
+                ];
+            }
+        });
 
         match event {
             Event::MenuEvent {

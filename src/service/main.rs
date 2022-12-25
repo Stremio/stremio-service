@@ -18,6 +18,7 @@ use stremio_service::{
     shared::{load_icon, create_dir_if_does_not_exists}
 };
 use urlencoding::encode;
+use fruitbasket::{FruitApp, FruitCallbackKey};
 
 #[derive(RustEmbed)]
 #[folder = "icons"]
@@ -59,6 +60,20 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     make_it_autostart(home_dir);
+
+    // NOTE: we do not need to run the Fruitbasket event loop but we do need to keep `app` in-scope for the full lifecycle of the app
+    #[cfg(target_os = "macos")]
+    let mut app = FruitApp::new();
+    #[cfg(target_os = "macos")] {
+        app.register_apple_event(fruitbasket::kInternetEventClass, fruitbasket::kAEGetURL);
+        app.register_callback(
+            FruitCallbackKey::Method("handleEvent:withReplyEvent:"),
+            Box::new(move |event| {
+                let url: String = fruitbasket::parse_url_event(event);
+                println!("{}", url);
+            }),
+        );
+    }
 
     #[cfg(not(target_os = "linux"))]
     if !options.skip_updater {

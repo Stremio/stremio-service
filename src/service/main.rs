@@ -18,6 +18,7 @@ use stremio_service::{
     shared::{load_icon, create_dir_if_does_not_exists}
 };
 use urlencoding::encode;
+use fruitbasket::{FruitApp, FruitCallbackKey};
 
 #[derive(RustEmbed)]
 #[folder = "icons"]
@@ -38,10 +39,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let options = Options::parse();
 
     if let Some(open_url) = options.open {
-        if open_url.starts_with("stremio://") {
-            let url = open_url.replace("stremio://", "https://");
-            open_stremio_web(Some(url));
-        }
+        handle_stremio_protocol(open_url);
     }
 
     let home_dir = dirs::home_dir()
@@ -59,6 +57,20 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     make_it_autostart(home_dir);
+
+    // NOTE: we do not need to run the Fruitbasket event loop but we do need to keep `app` in-scope for the full lifecycle of the app
+    #[cfg(target_os = "macos")]
+    let mut app = FruitApp::new();
+    #[cfg(target_os = "macos")] {
+        app.register_apple_event(fruitbasket::kInternetEventClass, fruitbasket::kAEGetURL);
+        app.register_callback(
+            FruitCallbackKey::Method("handleEvent:withReplyEvent:"),
+            Box::new(move |event| {
+                let open_url: String = fruitbasket::parse_url_event(event);
+                handle_stremio_protocol(open_url);
+            }),
+        );
+    }
 
     #[cfg(not(target_os = "linux"))]
     if !options.skip_updater {
@@ -196,6 +208,13 @@ fn create_system_tray(event_loop: &EventLoop<()>) -> Result<(Option<SystemTray>,
         open_item.id(),
         quit_item.id()
     ))
+}
+
+fn handle_stremio_protocol(open_url: String) {
+    if open_url.starts_with("stremio://") {
+        let url = open_url.replace("stremio://", "https://");
+        open_stremio_web(Some(url));
+    }
 }
 
 fn open_stremio_web(addon_manifest_url: Option<String>) {

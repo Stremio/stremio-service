@@ -41,6 +41,7 @@ tao = { version = "0.15.3", features = ["tray"] }
 tokio = { version = "1.21.2", features = ["full"] }
 urlencoding = "2.1.2"
 zip-extract = "0.1.1"
+fruitbasket = "0.10.0"
 
 [build-dependencies]
 bytes = "1.0.1"

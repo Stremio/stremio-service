@@ -66,7 +66,7 @@
                             Id='StremioService'
                             Name='service.exe'
                             DiskId='1'
-                            Source='$(var.CargoTargetBinDir)\service.exe'
+                            Source='$(var.CargoTargetBinDir)\stremio-service.exe'
                             KeyPath='yes'/>
                     </Component>
                     <Component Id='binary1' Guid='*'>
@@ -82,15 +82,15 @@
                             Id='Node'
                             Name='node.exe'
                             DiskId='1'
-                            Source='$(var.CargoTargetBinDir)\node.exe'
+                            Source='$(var.CargoTargetBinDir)\..\resources\bin\node.exe'
                             KeyPath='yes'/>
                     </Component>
                     <Component Id='binary3' Guid='*'>
                         <File
                             Id='FFMPEG'
-                            Name='ffmpeg.exe'
+                            Name='ffmpeg-windows.exe'
                             DiskId='1'
-                            Source='$(var.CargoTargetBinDir)\ffmpeg.exe'
+                            Source='$(var.CargoTargetBinDir)\..\resources\bin\ffmpeg-windows.exe'
                             KeyPath='yes'/>
                     </Component>
                     <Component Id='binary4' Guid='*'>
@@ -98,7 +98,7 @@
                             Id='server'
                             Name='server.js'
                             DiskId='1'
-                            Source='$(var.CargoTargetBinDir)\server.js'
+                            Source='$(var.CargoTargetBinDir)\..\resources\bin\server.js'
                             KeyPath='yes'/>
                     </Component>
                 </Directory>

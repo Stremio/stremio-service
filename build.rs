@@ -33,37 +33,30 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("cargo:rerun-if-changed=src/");
 
     let current_dir = std::env::current_dir()?;
-    let target_dir = current_dir.join("target");
+    let resource_dir = current_dir.join("resources");
+    let resource_bin_dir = resource_dir.join("bin");
 
-    let target_bin_path = if cfg!(debug_assertions) {
-        target_dir.join("debug")
-    } else {
-        target_dir.join("release")
-    };
 
-    let server_js_target = target_bin_path.join("server.js");
+    let server_js_target = resource_bin_dir.join("server.js");
     if !server_js_target.exists() {
         let server_js_file = reqwest::blocking::get(STREMIO_SERVER)?.bytes()?;
-        fs::write(target_bin_path.join("server.js"), server_js_file)?;
+        fs::write(resource_bin_dir.join("server.js"), server_js_file)?;
     }
 
     #[cfg(target_os = "windows")] {
-        extract_zip(NODE_WINDOWS_ARCHIVE, "node.exe", target_bin_path.clone())?;
+        extract_zip(NODE_WINDOWS_ARCHIVE, "node.exe", resource_bin_dir.clone())?;
     }
 
     #[cfg(target_os = "linux")] {
-        extract_tar::<XzDecoder<Cursor<Bytes>>>(NODE_LINUX_ARCHIVE, "bin/node", "node", &target_bin_path)?;
+        extract_tar::<XzDecoder<Cursor<Bytes>>>(NODE_LINUX_ARCHIVE, "bin/node", "node", &resource_bin_dir)?;
     }
 
     #[cfg(target_os = "macos")] {
-        extract_tar::<GzDecoder<Cursor<Bytes>>>(NODE_MACOS_ARCHIVE, "bin/node", "node", &target_bin_path)?;
+        extract_tar::<GzDecoder<Cursor<Bytes>>>(NODE_MACOS_ARCHIVE, "bin/node", "node", &resource_bin_dir)?;
     }
 
-    let binaries_dir = current_dir.join("binaries");
-    copy_binaries(binaries_dir, &target_bin_path)?;
-
     #[cfg(target_os = "windows")] {
-        let resources_file = current_dir.join("resources").join("resources.rc");
+        let resources_file = resource_dir.join("resources.rc");
         embed_resource::compile(resources_file.to_str().unwrap());
     }
 
@@ -98,25 +91,6 @@ fn extract_tar<D: Decoder + std::io::Read>(url: &str, file_path: &str, out_name:
             if path.ends_with(file_path) {
                 file.unpack(target.clone())?;
             }
-        }            
-    }
-
-    Ok(())
-}
-
-fn copy_binaries(binaries_dir: PathBuf, path: &PathBuf) -> Result<(), Box<dyn Error>> {
-    let platform_string = std::env::consts::OS;
-
-    for entry in fs::read_dir(binaries_dir)? {
-        match entry {
-            Ok(file) => {
-                let file_name = file.file_name().into_string().unwrap();
-                if file_name.contains(&platform_string) {
-                    let final_file_name = file_name.replace(format!("-{}", platform_string).as_str(), "");
-                    fs::copy(file.path(), path.join(final_file_name))?;
-                }
-            },
-            _ => {}
         }
     }
 

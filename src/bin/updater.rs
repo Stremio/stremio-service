@@ -1,8 +1,8 @@
-use std::{error::Error, io::Cursor, path::PathBuf, process::Command};
-use log::{error, info};
 use clap::Parser;
+use log::{error, info};
+use std::{error::Error, io::Cursor, path::PathBuf, process::Command};
 
-use stremio_service::shared::get_current_exe_dir;
+use stremio_service::util::get_current_exe_dir;
 
 #[derive(Parser, Debug)]
 pub struct Options {
@@ -18,10 +18,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     if options.url.len() > 0 {
         info!("Downloading {}...", options.url);
-        let archive = reqwest::get(options.url)
-            .await?
-            .bytes()
-            .await?;
+        let archive = reqwest::get(options.url).await?.bytes().await?;
 
         let current_exe_dir = get_current_exe_dir();
 
@@ -30,7 +27,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         match extracted {
             Ok(_) => info!("Successfully extracted archive."),
-            Err(e) => error!("Failed to extract archive: {}", e)
+            Err(e) => error!("Failed to extract archive: {}", e),
         }
     }
 
@@ -45,12 +42,12 @@ fn run_service() {
 
     let mut command = Command::new(updater_binary_path);
     command.arg("--skip-updater");
-        
+
     match command.spawn() {
         Ok(process) => {
             let process_pid = process.id();
             info!("Stremio Service started. (PID {:?})", process_pid);
-        },
-        Err(err) => error!("Stremio Service couldn't be started: {err}")
+        }
+        Err(err) => error!("Stremio Service couldn't be started: {err}"),
     }
 }

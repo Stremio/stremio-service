@@ -54,42 +54,41 @@ fn main() -> Result<(), Box<dyn Error>> {
         <plist version=\"1.0\">
             <dict>
                 <key>CFBundleDisplayName</key>
-                <string>{}</string>
+                <string>{display_name}</string>
                 <key>CFBundleIdentifier</key>
-                <string>{}</string>
+                <string>{identifier}</string>
                 <key>CFBundleVersion</key>
-                <string>{}</string>
+                <string>{version}</string>
                 <key>CFBundleShortVersionString</key>
-                <string>{}</string>
+                <string>{version}</string>
                 <key>CFBundleIconFile</key>
-                <string>{}</string>
+                <string>{icon_file}</string>
                 <key>CFBundleExecutable</key>
-                <string>{}</string>
+                <string>{executable}</string>
                 <key>NSHumanReadableCopyright</key>
-                <string>{}</string>
+                <string>{copyright}</string>
                 <key>CFBundleURLTypes</key>
                 <array>
                     <dict>
                         <key>CFBundleURLName</key>
-                        <string>{}</string>
+                        <string>{url_name}</string>
                         <key>CFBundleURLSchemes</key>
                         <array>
-                            <string>{}</string>
+                            <string>{url_scheme}</string>
                         </array>
                     </dict>
                 </array>
             </dict>
         </plist>
     ",
-        metadata.display_name,
-        metadata.identifier,
-        env!("CARGO_PKG_VERSION"),
-        env!("CARGO_PKG_VERSION"),
-        metadata.icon[1],
-        metadata.executable,
-        metadata.copyright,
-        metadata.display_name,
-        metadata.url_scheme
+        display_name = metadata.display_name,
+        identifier = metadata.identifier,
+        version = env!("CARGO_PKG_VERSION"),
+        icon_file = metadata.icon[1],
+        executable = metadata.executable,
+        copyright = metadata.copyright,
+        url_name = metadata.display_name,
+        url_scheme = metadata.url_scheme
     );
     std::fs::write(contents_path.join("Info.plist"), info_plist)?;
 

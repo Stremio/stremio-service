@@ -172,7 +172,7 @@ async fn check_for_updates() {
 
 /// Only for Linux and MacOS
 #[cfg_attr(
-    not(any(target_os = "linux", target_os = "macos")),
+    any(target_os = "linux", target_os = "macos"),
     allow(unused_variables)
 )]
 fn make_it_autostart(home_dir: impl AsRef<Path>) {
@@ -224,7 +224,7 @@ fn make_it_autostart(home_dir: impl AsRef<Path>) {
             </plist>
         ", APP_IDENTIFIER, APP_NAME);
 
-        let launch_agents_path = PathBuf::from(LAUNCH_AGENTS_PATH);
+        let launch_agents_path = home_dir.as_ref().join(LAUNCH_AGENTS_PATH);
         create_dir_if_does_not_exists(
             launch_agents_path
                 .to_str()

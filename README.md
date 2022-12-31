@@ -112,5 +112,5 @@ The Manifest is located [resources/com.stremio.Service.json](.resources/com.stre
 #### MacOS
 
 ```
-cargo run --bin build-macos && create-dmg --overwrite target/macos/*.app target/macos
+cargo run --bin bundle-macos && create-dmg --overwrite target/macos/*.app target/macos
 ```

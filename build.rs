@@ -2,8 +2,11 @@ use std::{error::Error, fs, io::Cursor, path::Path};
 
 use bytes::Bytes;
 use flate2::bufread::GzDecoder;
-use tar::Archive;
 use xz::bufread::XzDecoder;
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+use tar::Archive;
+#[cfg(target_os = "windows")]
+use std::path::PathBuf;
 
 const STREMIO_SERVER: &str = "https://dl.strem.io/four/master/server.js";
 #[cfg(target_os = "windows")]
@@ -92,6 +95,7 @@ fn extract_zip(url: &str, file_name: &str, out: &Path) -> Result<(), Box<dyn Err
     Ok(())
 }
 
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 fn extract_tar<D: Decoder + std::io::Read>(
     url: &str,
     file_path: &str,

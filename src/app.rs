@@ -94,7 +94,7 @@ impl Application {
 
         // NOTE: we do not need to run the Fruitbasket event loop but we do need to keep `app` in-scope for the full lifecycle of the app
         #[cfg(target_os = "macos")]
-        let fruit_app = register_apple_event_callbacks();
+        let _fruit_app = register_apple_event_callbacks();
 
         if self.config.run_updater {
             check_for_updates().await
@@ -285,7 +285,7 @@ fn open_stremio_web(addon_manifest_url: Option<String>) {
 }
 
 #[cfg(target_os = "macos")]
-fn register_apple_event_callbacks() -> fruitbasket::FruitApp {
+fn register_apple_event_callbacks() -> fruitbasket::FruitApp<'static> {
     use fruitbasket::{FruitApp, FruitCallbackKey};
 
     let mut app = FruitApp::new();
@@ -298,4 +298,6 @@ fn register_apple_event_callbacks() -> fruitbasket::FruitApp {
             handle_stremio_protocol(open_url);
         }),
     );
+    
+    app
 }

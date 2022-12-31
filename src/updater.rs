@@ -26,7 +26,7 @@ pub async fn fetch_update(version: &str) -> Result<Option<Update>, Box<dyn Error
         Ok(page) => {
             let next_version = VersionReq::parse(&(">".to_owned() + version))?;
             let update: Option<Update> = page.items.iter().find_map(|release| {
-                let version = Version::parse(&release.tag_name.replace("v", ""))
+                let version = Version::parse(&release.tag_name.replace('v', ""))
                     .expect("Failed to parse release version tag");
 
                 match next_version.matches(&version) {

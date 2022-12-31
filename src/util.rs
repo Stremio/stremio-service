@@ -1,6 +1,6 @@
+use log::error;
 use std::{env, path::PathBuf};
 use tao::system_tray;
-use log::error;
 
 pub fn load_icon(buffer: &[u8]) -> system_tray::Icon {
     let (icon_rgba, icon_width, icon_height) = {
@@ -12,14 +12,14 @@ pub fn load_icon(buffer: &[u8]) -> system_tray::Icon {
 
         (rgba, width, height)
     };
-    system_tray::Icon::from_rgba(icon_rgba, icon_width, icon_height)
-        .expect("Failed to open icon")
+    system_tray::Icon::from_rgba(icon_rgba, icon_width, icon_height).expect("Failed to open icon")
 }
 
 pub fn get_current_exe_dir() -> PathBuf {
-    let current_exe_location = env::current_exe()
-        .expect("Failed to get current executable location");
-    let current_exe_dir = current_exe_location.parent()
+    let current_exe_location =
+        env::current_exe().expect("Failed to get current executable location");
+    let current_exe_dir = current_exe_location
+        .parent()
         .expect("Failed to get current executable directory");
 
     PathBuf::from(current_exe_dir)

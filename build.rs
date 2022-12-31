@@ -1,4 +1,4 @@
-use std::{error::Error, fs, path::PathBuf, io::Cursor};
+use std::{error::Error, fs, io::Cursor, path::Path};
 
 use bytes::Bytes;
 use flate2::bufread::GzDecoder;
@@ -36,26 +36,39 @@ fn main() -> Result<(), Box<dyn Error>> {
     let resource_dir = current_dir.join("resources");
     let resource_bin_dir = resource_dir.join("bin");
 
-
     let server_js_target = resource_bin_dir.join("server.js");
     if !server_js_target.exists() {
         let server_js_file = reqwest::blocking::get(STREMIO_SERVER)?.bytes()?;
         fs::write(resource_bin_dir.join("server.js"), server_js_file)?;
     }
 
-    #[cfg(target_os = "windows")] {
-        extract_zip(NODE_WINDOWS_ARCHIVE, "node.exe", resource_bin_dir.clone())?;
+    #[cfg(target_os = "windows")]
+    {
+        extract_zip(NODE_WINDOWS_ARCHIVE, "node.exe", &resource_bin_dir)?;
     }
 
-    #[cfg(target_os = "linux")] {
-        extract_tar::<XzDecoder<Cursor<Bytes>>>(NODE_LINUX_ARCHIVE, "bin/node", "node", &resource_bin_dir)?;
+    #[cfg(target_os = "linux")]
+    {
+        extract_tar::<XzDecoder<Cursor<Bytes>>>(
+            NODE_LINUX_ARCHIVE,
+            "bin/node",
+            "node",
+            &resource_bin_dir,
+        )?;
     }
 
-    #[cfg(target_os = "macos")] {
-        extract_tar::<GzDecoder<Cursor<Bytes>>>(NODE_MACOS_ARCHIVE, "bin/node", "node", &resource_bin_dir)?;
+    #[cfg(target_os = "macos")]
+    {
+        extract_tar::<GzDecoder<Cursor<Bytes>>>(
+            NODE_MACOS_ARCHIVE,
+            "bin/node",
+            "node",
+            &resource_bin_dir,
+        )?;
     }
 
-    #[cfg(target_os = "windows")] {
+    #[cfg(target_os = "windows")]
+    {
         let resources_file = resource_dir.join("resources.rc");
         embed_resource::compile(resources_file.to_str().unwrap());
     }
@@ -64,7 +77,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 
 #[cfg(target_os = "windows")]
-fn extract_zip(url: &str, file_name: &str, out: PathBuf) -> Result<(), Box<dyn Error>> {
+fn extract_zip(url: &str, file_name: &str, out: &Path) -> Result<(), Box<dyn Error>> {
     let target = out.join(file_name);
     if !target.exists() {
         let tmp_dir = PathBuf::from(".tmp");
@@ -79,7 +92,12 @@ fn extract_zip(url: &str, file_name: &str, out: PathBuf) -> Result<(), Box<dyn E
     Ok(())
 }
 
-fn extract_tar<D: Decoder + std::io::Read>(url: &str, file_path: &str, out_name: &str, out: &PathBuf) -> Result<(), Box<dyn Error>> {
+fn extract_tar<D: Decoder + std::io::Read>(
+    url: &str,
+    file_path: &str,
+    out_name: &str,
+    out: &Path,
+) -> Result<(), Box<dyn Error>> {
     let target = out.join(out_name);
     if !target.exists() {
         let archive_file = reqwest::blocking::get(url)?.bytes()?;

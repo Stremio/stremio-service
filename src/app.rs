@@ -94,7 +94,7 @@ impl Application {
 
         // NOTE: we do not need to run the Fruitbasket event loop but we do need to keep `app` in-scope for the full lifecycle of the app
         #[cfg(target_os = "macos")]
-        let fruit_app = register_apple_event_handlers();
+        let fruit_app = register_apple_event_callbacks();
 
         if self.config.run_updater {
             check_for_updates().await
@@ -171,11 +171,17 @@ async fn check_for_updates() {
 }
 
 /// Only for Linux and MacOS
-#[cfg_attr(not(any(target_os = "linux", target_os = "macos")), allow(unused_variables))]
+#[cfg_attr(
+    not(any(target_os = "linux", target_os = "macos")),
+    allow(unused_variables)
+)]
 fn make_it_autostart(home_dir: impl AsRef<Path>) {
     #[cfg(target_os = "linux")]
     {
-        use crate::{ util::create_dir_if_does_not_exists, config::{AUTOSTART_CONFIG_PATH, DESKTOP_FILE_NAME, DESKTOP_FILE_PATH}};
+        use crate::{
+            config::{AUTOSTART_CONFIG_PATH, DESKTOP_FILE_NAME, DESKTOP_FILE_PATH},
+            util::create_dir_if_does_not_exists,
+        };
 
         create_dir_if_does_not_exists(AUTOSTART_CONFIG_PATH);
 
@@ -194,7 +200,10 @@ fn make_it_autostart(home_dir: impl AsRef<Path>) {
 
     #[cfg(target_os = "macos")]
     {
-        use crate::config::{APP_IDENTIFIER, APP_NAME, LAUNCH_AGENTS_PATH};
+        use crate::{
+            config::{APP_IDENTIFIER, APP_NAME, LAUNCH_AGENTS_PATH},
+            util::create_dir_if_does_not_exists,
+        };
 
         let plist_launch_agent = format!("
             <?xml version=\"1.0\" encoding=\"UTF-8\"?>
@@ -245,7 +254,7 @@ fn create_system_tray(
     let icon_file = Icons::get("icon.png").ok_or_else(|| anyhow!("Failed to get icon file"))?;
     let icon = load_icon(icon_file.data.as_ref());
 
-    let system_tray = SystemTrayBuilder::new(icon.clone(), Some(tray_menu))
+    let system_tray = SystemTrayBuilder::new(icon, Some(tray_menu))
         .with_id(TrayId::new("main"))
         .build(event_loop)
         .context("Failed to build the application system tray")?;

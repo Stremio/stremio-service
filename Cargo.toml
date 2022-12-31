@@ -65,6 +65,13 @@ serde = { version = "1", features = ["derive"] }
 urlencoding = "2.1.2"
 zip-extract = "0.1.1"
 
+[target.'cfg(target_os = "macos")'.dependencies]
+# MacOS Apple Events handling
+fruitbasket = "0.10"
+
+[target.'cfg(target_os = "windows")'.build-dependencies]
+embed-resource = "1.7.4"
+
 [build-dependencies]
 bytes = "1.0.1"
 flate2 = "1.0.25"
@@ -72,13 +79,6 @@ reqwest = { version = "0.11.12", features = ["blocking"] }
 tar = "0.4.38"
 xz = "0.1.0"
 zip-extract = "0.1.1"
-
-[target.'cfg(macos)'.build-dependencies]
-# MacOS Apple Events handling
-fruitbasket = "0.10"
-
-[target.'cfg(windows)'.build-dependencies]
-embed-resource = "1.7.4"
 
 [profile.release]
 opt-level = 3

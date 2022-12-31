@@ -16,7 +16,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let options = Options::parse();
 
-    if options.url.len() > 0 {
+    if !options.url.is_empty() {
         info!("Downloading {}...", options.url);
         let archive = reqwest::get(options.url).await?.bytes().await?;
 

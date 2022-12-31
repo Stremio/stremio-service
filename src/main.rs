@@ -38,10 +38,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let cli = Cli::parse();
 
-    match cli.command {
-        Some(Command::Open { url }) => handle_stremio_protocol(url),
-        _ => {}
-    };
+    if let Some(Command::Open { url }) = cli.command {
+        handle_stremio_protocol(url);
+    }
 
     let home_dir = dirs::home_dir().context("Failed to get home dir")?;
 
@@ -50,7 +49,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let server_bins_dir = stremio_service::util::get_current_exe_dir();
     #[cfg(not(feature = "bundled"))]
     // use the `resources/bin` directory
-    let server_bins_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources").join("bin");
+    let server_bins_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("resources")
+        .join("bin");
 
     let server_config =
         server::Config::at_dir(server_bins_dir).context("Server.js configuration failed")?;

@@ -103,7 +103,7 @@ impl Config {
         }
     }
 
-     /// Returns the node binary name (Operating system dependent).
+    /// Returns the node binary name (Operating system dependent).
     ///
     /// Supports only 3 OSes:
     /// - `linux` - returns `node`

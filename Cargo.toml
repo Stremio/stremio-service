@@ -92,7 +92,7 @@ depends = "$auto"
 section = "Stremio;Media;Play;"
 priority = "optional"
 assets = [
-    ["target/release/stremio-service", "/usr/bin/stremio-service/service", "755"],
+    ["target/release/stremio-service", "/usr/bin/stremio-service/stremio-service", "755"],
     ["resources/bin/node", "/usr/bin/stremio-service/node", "755"],
     ["resources/bin/server.js", "/usr/bin/stremio-service/server.js", "755"],
     ["resources/bin/ffmpeg-linux", "/usr/bin/stremio-service/ffmpeg-linux", "755"],
@@ -104,7 +104,7 @@ features = ["bundled"]
 [package.metadata.generate-rpm]
 # post_install_script = "gnome_version=$(gnome-shell --version  | awk '{print $NF}') && echo https://extensions.gnome.org/extension-data/appindicatorsupportrgcjonas.gmail.com.GNOME_VERSION.shell-extension.zip | sed -e s/GNOME_VERSION/$gnome_version/g"
 assets = [
-    { source = "target/release/stremio-service", dest = "/usr/bin/stremio-service/service", mode = "755" },
+    { source = "target/release/stremio-service", dest = "/usr/bin/stremio-service/stremio-service", mode = "755" },
     { source = "resources/bin/node", dest = "/usr/bin/stremio-service/node", mode = "755" },
     { source = "resources/bin/ffmpeg-linux", dest = "/usr/bin/stremio-service/ffmpeg-linux", mode = "755" },
     { source = "resources/bin/server.js", dest = "/usr/bin/stremio-service/server.js", mode = "755" },

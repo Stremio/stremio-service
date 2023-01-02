@@ -172,7 +172,7 @@ async fn check_for_updates() {
 
 /// Only for Linux and MacOS
 #[cfg_attr(
-    any(target_os = "linux", target_os = "macos"),
+    not(any(target_os = "linux", target_os = "macos")),
     allow(unused_variables)
 )]
 fn make_it_autostart(home_dir: impl AsRef<Path>) {

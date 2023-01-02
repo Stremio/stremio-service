@@ -64,7 +64,7 @@
                     <Component Id='binary0' Guid='*'>
                         <File
                             Id='StremioService'
-                            Name='service.exe'
+                            Name='stremio-service.exe'
                             DiskId='1'
                             Source='$(var.CargoTargetBinDir)\stremio-service.exe'
                             KeyPath='yes'/>
@@ -82,7 +82,7 @@
                             Id='Node'
                             Name='node.exe'
                             DiskId='1'
-                            Source='$(var.CargoTargetBinDir)\..\resources\bin\node.exe'
+                            Source='$(var.CargoTargetBinDir)\..\..\resources\bin\node.exe'
                             KeyPath='yes'/>
                     </Component>
                     <Component Id='binary3' Guid='*'>
@@ -90,16 +90,16 @@
                             Id='FFMPEG'
                             Name='ffmpeg-windows.exe'
                             DiskId='1'
-                            Source='$(var.CargoTargetBinDir)\..\resources\bin\ffmpeg-windows.exe'
-                            KeyPath='yes'/>
+                            Source='$(var.CargoTargetBinDir)\..\..\resources\bin\ffmpeg-windows.exe'
+                            KeyPath='yes' />
                     </Component>
                     <Component Id='binary4' Guid='*'>
                         <File
                             Id='server'
                             Name='server.js'
                             DiskId='1'
-                            Source='$(var.CargoTargetBinDir)\..\resources\bin\server.js'
-                            KeyPath='yes'/>
+                            Source='$(var.CargoTargetBinDir)\..\..\resources\bin\server.js'
+                            KeyPath='yes' />
                     </Component>
                 </Directory>
             </Directory>
@@ -109,7 +109,7 @@
                     <Shortcut Id="ApplicationDesktopShortcut"
                         Name="Stremio Service"
                         Description="Start Stremio Service"
-                        Target="[APPLICATIONFOLDER]service.exe"
+                        Target="[APPLICATIONFOLDER]stremio-service.exe"
                         WorkingDirectory="APPLICATIONFOLDER"
                     />
                     <RemoveFolder Id="DesktopFolder" On="uninstall" />
@@ -131,7 +131,7 @@
                     <RegistryValue Type="string" Name="URL Protocol" Value="" />
                     <RegistryValue Type="string" Value="URL:Stremio Protocol" />
                     <RegistryKey Key="shell\open\command">
-                        <RegistryValue Type="string" Value="&quot;[APPLICATIONFOLDER]service.exe&quot; &quot;-o&quot; &quot;%1&quot;" />
+                        <RegistryValue Type="string" Value="&quot;[APPLICATIONFOLDER]stremio-service.exe&quot; &quot;-o&quot; &quot;%1&quot;" />
                     </RegistryKey>
                 </RegistryKey>
             </Component>
@@ -143,7 +143,7 @@
                     Action="write"
                     Key="Software\Microsoft\Windows\CurrentVersion\Run"
                     Name="Stremio Service"
-                    Value="[APPLICATIONFOLDER]service.exe"
+                    Value="[APPLICATIONFOLDER]stremio-service.exe"
                     Type="string" />
                 <Condition>1</Condition>
             </Component>

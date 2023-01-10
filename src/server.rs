@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail, Error};
+use anyhow::{anyhow, bail, Context, Error};
 use log::{error, info};
 use once_cell::sync::OnceCell;
 use std::{
@@ -56,7 +56,11 @@ impl Config {
             let ffmpeg = directory.join(Self::ffmpeg_bin(None)?);
             let server = directory.join("server.js");
 
-            match (node.exists(), ffmpeg.exists(), server.exists()) {
+            match (
+                node.try_exists().context("Nodejs")?,
+                ffmpeg.try_exists().context("ffmpeg")?,
+                server.try_exists().context("server.js")?,
+            ) {
                 (false, true, true) => bail!("Nodejs not found at: {}", node.display().to_string()),
                 (true, false, true) => {
                     bail!("ffmpeg not found at: {}", ffmpeg.display().to_string())

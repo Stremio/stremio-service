@@ -82,7 +82,7 @@ impl Config {
         let updater_bin = match (self_update, IS_UPDATER_SUPPORTED) {
             (true, true) => {
                 // make sure that the updater exists
-                let bin_path = service_bins_dir.join("updater");
+                let bin_path = service_bins_dir.join(Self::updater_bin(None)?);
 
                 if bin_path
                     .try_exists()
@@ -90,7 +90,7 @@ impl Config {
                 {
                     Some(bin_path)
                 } else {
-                    bail!("couldn't find the updater binary")
+                    bail!("Couldn't find the updater binary")
                 }
             }
             (true, false) => {
@@ -108,6 +108,29 @@ impl Config {
             server,
             updater_bin,
         })
+    }
+
+    /// Returns the updater binary name (Operating system dependent).
+    ///
+    /// Although the binary name will be returned for Linux OS,
+    /// the updater does **not** run for Linux OS!
+    ///
+    /// Supports only 3 OSes:
+    /// - `linux` - returns `updater`
+    /// - `macos` returns `updater`
+    /// - `windows` returns `updater.exe`
+    ///
+    /// If no OS is supplied, [`std::env::consts::OS`] is used.
+    ///
+    /// # Errors
+    ///
+    /// If any other OS is supplied, see [`std::env::consts::OS`] for more details.
+    pub fn updater_bin(operating_system: Option<&str>) -> Result<&'static str, Error> {
+        match operating_system.unwrap_or(std::env::consts::OS) {
+            "linux" | "macos" => Ok("updater"),
+            "windows" => Ok("updater.exe"),
+            os => bail!("Operating system {} is not supported", os),
+        }
     }
 }
 

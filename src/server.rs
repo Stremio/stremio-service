@@ -167,7 +167,7 @@ impl Server {
                 }
             }
         } else {
-            info!("Server has already been started, do nothing.")
+            info!("Only 1 instance of server can run for an instance, do nothing.")
         }
 
         Ok(())

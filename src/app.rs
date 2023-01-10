@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context};
+use anyhow::{anyhow, bail, Context, Error};
 use fslock::LockFile;
 use log::{error, info};
 use rust_embed::RustEmbed;
@@ -14,11 +14,19 @@ use tao::{
 use crate::{
     config::{DATA_DIR, STREMIO_URL},
     server::Server,
+    updater::Updater,
     util::load_icon,
 };
 use urlencoding::encode;
 
 use crate::server;
+
+/// Updater is supported only for non-linux operating systems.
+#[cfg(not(target_os = "linux"))]
+pub static IS_UPDATER_SUPPORTED: bool = true;
+/// Updater is supported only for non-linux operating systems.
+#[cfg(target_os = "linux")]
+pub static IS_UPDATER_SUPPORTED: bool = false;
 
 #[derive(RustEmbed)]
 #[folder = "icons"]
@@ -45,28 +53,61 @@ pub struct Config {
     /// The server.js configuration
     server: server::Config,
 
-    /// Whether or not to run updating process
+    /// The location of the updater bin.
+    /// If `Some` it will try to run the updater at the provided location,
+    /// which was is validated beforehand that it is a file and exists!
     ///
-    /// Applicable only to non-linux OSes
-    run_updater: bool,
+    /// This should be set **only** if the OS is supported, see [`IS_UPDATER_SUPPORTED`]
+    updater_bin: Option<PathBuf>,
 }
 
 impl Config {
+    /// Try to create by validating the application configuration.
+    ///
+    /// It will initialize the server.js [`server::Config`] and if it fails it will return an error.
+    ///
+    /// If `self_update` is `true` and it is a supported platform for the updater (see [`IS_UPDATER_SUPPORTED`])
+    /// it will check for the existence of the `updater` binary at the given location.
     pub fn new(
         home_dir: PathBuf,
-        server: server::Config,
-        run_updater: impl Into<Option<bool>>,
-    ) -> Self {
+        service_bins_dir: PathBuf,
+        self_update: bool,
+    ) -> Result<Self, Error> {
+        let server = server::Config::at_dir(service_bins_dir.clone())
+            .context("Server.js configuration failed")?;
+
         let data_dir = home_dir.join(DATA_DIR);
         let lockfile = data_dir.join("lock");
 
-        Self {
+        let updater_bin = match (self_update, IS_UPDATER_SUPPORTED) {
+            (true, true) => {
+                // make sure that the updater exists
+                let bin_path = service_bins_dir.join("updater");
+
+                if bin_path
+                    .try_exists()
+                    .context("Check for updater existence failed")?
+                {
+                    Some(bin_path)
+                } else {
+                    bail!("couldn't find the updater binary")
+                }
+            }
+            (true, false) => {
+                info!("Self-update is not supported for this OS");
+
+                None
+            }
+            _ => None,
+        };
+
+        Ok(Self {
             home_dir,
             data_dir,
             lockfile,
             server,
-            run_updater: run_updater.into().unwrap_or(true),
-        }
+            updater_bin,
+        })
     }
 }
 
@@ -96,8 +137,20 @@ impl Application {
         #[cfg(target_os = "macos")]
         let _fruit_app = register_apple_event_callbacks();
 
-        if self.config.run_updater {
-            check_for_updates().await
+        if let Some(updater_bin) = self.config.updater_bin.as_ref() {
+            let current_version = env!("CARGO_PKG_VERSION")
+                .parse()
+                .expect("Should always be valid");
+            let updater = Updater::new(current_version, updater_bin.clone());
+            let updated = updater.prompt_and_update().await;
+
+            if updated {
+                // Exit current process as the updater has spawn the
+                // new version in a separate process.
+                // We haven't started the server.js in this instance yet
+                // so it is safe to run the second service by the updater
+                return Ok(());
+            }
         }
 
         self.server.start().context("Failed to start server.js")?;
@@ -129,44 +182,6 @@ impl Application {
                 _ => (),
             }
         });
-    }
-}
-
-/// Updates the service only for non-linux OS
-async fn check_for_updates() {
-    #[cfg(not(target_os = "linux"))]
-    {
-        use crate::updater::{fetch_update, run_updater};
-        use native_dialog::{MessageDialog, MessageType};
-
-        let current_version = env!("CARGO_PKG_VERSION");
-        info!("Fetching updates for v{}", current_version);
-
-        match fetch_update(&current_version).await {
-            Ok(response) => match response {
-                Some(update) => {
-                    info!("Found update v{}", update.version.to_string());
-
-                    let title = "Stremio Service";
-                    let message = format!(
-                        "Update v{} is available.\nDo you want to update now?",
-                        update.version.to_string()
-                    );
-                    let do_update = MessageDialog::new()
-                        .set_type(MessageType::Info)
-                        .set_title(title)
-                        .set_text(&message)
-                        .show_confirm()
-                        .unwrap();
-
-                    if do_update {
-                        run_updater(update.file.browser_download_url)
-                    }
-                }
-                None => {}
-            },
-            Err(e) => error!("Failed to fetch updates: {}", e),
-        }
     }
 }
 
@@ -298,6 +313,6 @@ fn register_apple_event_callbacks() -> fruitbasket::FruitApp<'static> {
             handle_stremio_protocol(open_url);
         }),
     );
-    
+
     app
 }

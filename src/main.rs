@@ -2,10 +2,7 @@ use anyhow::Context;
 use clap::{Parser, Subcommand};
 use std::error::Error;
 
-use stremio_service::{
-    app::{handle_stremio_protocol, Application, Config},
-    server,
-};
+use stremio_service::app::{handle_stremio_protocol, Application, Config};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -46,16 +43,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     #[cfg(feature = "bundled")]
     // use the installed dir if we've built the app with `bundled` feature.
-    let server_bins_dir = stremio_service::util::get_current_exe_dir();
+    let service_bins_dir = stremio_service::util::get_current_exe_dir();
     #[cfg(not(feature = "bundled"))]
     // use the `resources/bin` directory
-    let server_bins_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    let service_bins_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("resources")
         .join("bin");
 
-    let server_config =
-        server::Config::at_dir(server_bins_dir).context("Server.js configuration failed")?;
-    let config = Config::new(home_dir, server_config, !cli.skip_updater);
+    let config = Config::new(home_dir, service_bins_dir, !cli.skip_updater)?;
     log::info!("Using service configuration: {:?}", config);
 
     let application = Application::new(config);

@@ -40,7 +40,7 @@ jobs:
         uses: vimtor/action-zip@v1
         with:
           # todo: add license
-          files: resources/bin/ffmpeg resources/bin/node target/release/stremio-service resources/bin/server.js
+          files: resources/bin/ffmpeg-macos resources/bin/node target/release/stremio-service resources/bin/server.js
           dest: stremio-service-macos.zip
       - name: Upload zip release
         uses: svenstaro/upload-release-action@v1-release

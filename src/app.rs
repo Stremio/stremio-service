@@ -15,7 +15,7 @@ use crate::{
     config::{DATA_DIR, STREMIO_URL},
     server::Server,
     updater::Updater,
-    util::{load_icon, get_current_exe_dir},
+    util::{get_current_exe_dir, load_icon},
 };
 use urlencoding::encode;
 
@@ -221,7 +221,7 @@ fn make_it_autostart(home_dir: impl AsRef<Path>) {
             util::create_dir_if_does_not_exists,
         };
 
-        create_dir_if_does_not_exists(AUTOSTART_CONFIG_PATH);
+        create_dir_if_does_not_exists(&home_dir.as_ref().join(AUTOSTART_CONFIG_PATH));
 
         let from = PathBuf::from(DESKTOP_FILE_PATH).join(DESKTOP_FILE_NAME);
         let to = home_dir

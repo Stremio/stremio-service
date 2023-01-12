@@ -1,32 +1,23 @@
 use anyhow::Context;
-use clap::{Parser, Subcommand};
+use clap::Parser;
 use std::error::Error;
 
 use stremio_service::app::{handle_stremio_protocol, Application, Config};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
-#[command(propagate_version = true)]
 pub struct Cli {
-    #[arg(short, long)]
     /// Whether or not to skip the updater
     ///
     /// This options is not used for `*nix` systems
+    #[arg(short, long)]
     pub skip_updater: bool,
 
-    #[command(subcommand)]
-    pub command: Option<Command>,
-}
-
-#[derive(Subcommand, Debug)]
-pub enum Command {
     /// Open an URL with a custom `stremio://` scheme.
     ///
-    /// Used when installing addons or opening the web UI.
-    Open {
-        #[arg(short, long)]
-        url: String,
-    },
+    /// If empty URL or no url is provided, the service will skip this argument.
+    #[clap(short, long)]
+    pub open: Option<String>,
 }
 
 #[tokio::main]
@@ -35,8 +26,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let cli = Cli::parse();
 
-    if let Some(Command::Open { url }) = cli.command {
-        handle_stremio_protocol(url);
+    match cli.open {
+        Some(url) if url.is_empty() => {
+            handle_stremio_protocol(url);
+        }
+        _ => {}
     }
 
     let home_dir = dirs::home_dir().context("Failed to get home dir")?;

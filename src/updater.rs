@@ -32,7 +32,7 @@ impl Updater {
 
     /// Updates the service only for non-linux OS and returns whether an update was made.
     pub async fn prompt_and_update(&self) -> bool {
-        // #[cfg(not(target_os = "linux"))]
+        #[cfg(not(target_os = "linux"))]
         {
             use native_dialog::{MessageDialog, MessageType};
 

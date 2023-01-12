@@ -2,7 +2,9 @@ use anyhow::{anyhow, bail, Context, Error};
 use fslock::LockFile;
 use log::{error, info};
 use rust_embed::RustEmbed;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
+#[cfg(feature = "bundled")]
+use std::path::Path;
 use tao::{
     event::Event,
     event_loop::{ControlFlow, EventLoop},
@@ -42,6 +44,7 @@ pub struct Application {
 pub struct Config {
     /// The Home directory of the user running the service
     /// used to make the application an autostart one (on `*nix` systems)
+    #[cfg_attr(not(feature = "bundled"), allow(dead_code))]
     home_dir: PathBuf,
 
     /// The data directory where the service will store data
@@ -154,6 +157,7 @@ impl Application {
             return Ok(());
         }
 
+        #[cfg(feature = "bundled")]
         make_it_autostart(self.config.home_dir.clone());
 
         // NOTE: we do not need to run the Fruitbasket event loop but we do need to keep `app` in-scope for the full lifecycle of the app
@@ -208,11 +212,52 @@ impl Application {
     }
 }
 
+fn create_system_tray(
+    event_loop: &EventLoop<()>,
+) -> Result<(Option<SystemTray>, MenuId, MenuId), anyhow::Error> {
+    let mut tray_menu = ContextMenu::new();
+    let open_item = tray_menu.add_item(MenuItemAttributes::new("Open Stremio Web"));
+    let quit_item = tray_menu.add_item(MenuItemAttributes::new("Quit"));
+
+    let version_item_label = format!("v{}", env!("CARGO_PKG_VERSION"));
+    let version_item = MenuItemAttributes::new(version_item_label.as_str()).with_enabled(false);
+    tray_menu.add_item(version_item);
+
+    let icon_file = Icons::get("icon.png").ok_or_else(|| anyhow!("Failed to get icon file"))?;
+    let icon = load_icon(icon_file.data.as_ref());
+
+    let system_tray = SystemTrayBuilder::new(icon, Some(tray_menu))
+        .with_id(TrayId::new("main"))
+        .build(event_loop)
+        .context("Failed to build the application system tray")?;
+
+    Ok((Some(system_tray), open_item.id(), quit_item.id()))
+}
+
+/// Handles `stremio://` urls by replacing the custom scheme with `https://`
+/// and opening it.
+/// Either opens the Addon installation link or the Web UI url
+pub fn handle_stremio_protocol(open_url: String) {
+    if open_url.starts_with("stremio://") {
+        let url = open_url.replace("stremio://", "https://");
+        open_stremio_web(Some(url));
+    }
+}
+
+fn open_stremio_web(addon_manifest_url: Option<String>) {
+    let mut url = STREMIO_URL.to_string();
+    if let Some(p) = addon_manifest_url {
+        url = format!("{}/#/addons?addon={}", STREMIO_URL, &encode(&p));
+    }
+
+    match open::that(url) {
+        Ok(_) => info!("Opened Stremio Web in the browser"),
+        Err(e) => error!("Failed to open Stremio Web: {}", e),
+    }
+}
+
 /// Only for Linux and MacOS
-#[cfg_attr(
-    not(any(target_os = "linux", target_os = "macos")),
-    allow(unused_variables)
-)]
+#[cfg(feature = "bundled")]
 fn make_it_autostart(home_dir: impl AsRef<Path>) {
     #[cfg(target_os = "linux")]
     {
@@ -271,50 +316,6 @@ fn make_it_autostart(home_dir: impl AsRef<Path>) {
                 error!("Failed to create a plist file in LaunchAgents dir: {}", e);
             }
         }
-    }
-}
-
-fn create_system_tray(
-    event_loop: &EventLoop<()>,
-) -> Result<(Option<SystemTray>, MenuId, MenuId), anyhow::Error> {
-    let mut tray_menu = ContextMenu::new();
-    let open_item = tray_menu.add_item(MenuItemAttributes::new("Open Stremio Web"));
-    let quit_item = tray_menu.add_item(MenuItemAttributes::new("Quit"));
-
-    let version_item_label = format!("v{}", env!("CARGO_PKG_VERSION"));
-    let version_item = MenuItemAttributes::new(version_item_label.as_str()).with_enabled(false);
-    tray_menu.add_item(version_item);
-
-    let icon_file = Icons::get("icon.png").ok_or_else(|| anyhow!("Failed to get icon file"))?;
-    let icon = load_icon(icon_file.data.as_ref());
-
-    let system_tray = SystemTrayBuilder::new(icon, Some(tray_menu))
-        .with_id(TrayId::new("main"))
-        .build(event_loop)
-        .context("Failed to build the application system tray")?;
-
-    Ok((Some(system_tray), open_item.id(), quit_item.id()))
-}
-
-/// Handles `stremio://` urls by replacing the custom scheme with `https://`
-/// and opening it.
-/// Either opens the Addon installation link or the Web UI url
-pub fn handle_stremio_protocol(open_url: String) {
-    if open_url.starts_with("stremio://") {
-        let url = open_url.replace("stremio://", "https://");
-        open_stremio_web(Some(url));
-    }
-}
-
-fn open_stremio_web(addon_manifest_url: Option<String>) {
-    let mut url = STREMIO_URL.to_string();
-    if let Some(p) = addon_manifest_url {
-        url = format!("{}/#/addons?addon={}", STREMIO_URL, &encode(&p));
-    }
-
-    match open::that(url) {
-        Ok(_) => info!("Opened Stremio Web in the browser"),
-        Err(e) => error!("Failed to open Stremio Web: {}", e),
     }
 }
 

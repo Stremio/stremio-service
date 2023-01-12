@@ -26,11 +26,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let cli = Cli::parse();
 
-    match cli.open {
-        Some(url) if url.is_empty() => {
+    if let Some(url) = cli.open {
+        if !url.is_empty() {
             handle_stremio_protocol(url);
         }
-        _ => {}
     }
 
     let home_dir = dirs::home_dir().context("Failed to get home dir")?;

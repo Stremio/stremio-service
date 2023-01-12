@@ -17,6 +17,8 @@ jobs:
           toolchain: stable
       - name: Build
         run: cargo build --release --features=bundled
+      - name: Rename ffmpeg
+        run: mv resources/bin/ffmpeg-windows.exe resources/bin/ffmpeg.exe
       - name: Zip release for windows
         uses: vimtor/action-zip@v1
         with:

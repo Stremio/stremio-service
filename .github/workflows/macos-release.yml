@@ -36,8 +36,6 @@ jobs:
           tag: ${{ github.ref }}
           overwrite: true
           file_glob: true
-      - name: Rename ffmpeg
-        run: mv resources/bin/ffmpeg-macos resources/bin/ffmpeg
       - name: Zip release for macos
         uses: vimtor/action-zip@v1
         with:

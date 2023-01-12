@@ -38,7 +38,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 fn run_service() {
     let current_exe_dir = get_current_exe_dir();
-    let updater_binary_path = current_exe_dir.join(PathBuf::from("service"));
+    let updater_binary_path = current_exe_dir.join(PathBuf::from("stremio-service"));
 
     let mut command = Command::new(updater_binary_path);
     command.arg("--skip-updater");

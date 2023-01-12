@@ -15,7 +15,7 @@ use crate::{
     config::{DATA_DIR, STREMIO_URL},
     server::Server,
     updater::Updater,
-    util::load_icon,
+    util::{load_icon, get_current_exe_dir},
 };
 use urlencoding::encode;
 
@@ -82,7 +82,7 @@ impl Config {
         let updater_bin = match (self_update, IS_UPDATER_SUPPORTED) {
             (true, true) => {
                 // make sure that the updater exists
-                let bin_path = service_bins_dir.join(Self::updater_bin(None)?);
+                let bin_path = get_current_exe_dir().join(Self::updater_bin(None)?);
 
                 if bin_path
                     .try_exists()

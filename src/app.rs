@@ -263,11 +263,7 @@ fn make_it_autostart(home_dir: impl AsRef<Path>) {
         ", APP_IDENTIFIER, APP_NAME);
 
         let launch_agents_path = home_dir.as_ref().join(LAUNCH_AGENTS_PATH);
-        create_dir_if_does_not_exists(
-            launch_agents_path
-                .to_str()
-                .expect("Failed to convert PathBuf to str"),
-        );
+        create_dir_if_does_not_exists(&launch_agents_path);
 
         let plist_path = launch_agents_path.join(format!("{}.plist", APP_IDENTIFIER));
         if !plist_path.exists() {

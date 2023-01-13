@@ -4,7 +4,7 @@
     "runtime-version": "43",
     "sdk": "org.gnome.Sdk",
     "sdk-extensions": ["org.freedesktop.Sdk.Extension.rust-stable"],
-    "command": "/app/bin/stremio-service/service",
+    "command": "/app/bin/stremio-service/stremio-service",
     "finish-args": [
         "--share=network",
         "--share=ipc",
@@ -29,10 +29,10 @@
             "cargo --offline build --release --verbose"
         ],
         "post-install": [
-            "install -Dm755 ./target/release/service -t /app/bin/stremio-service/",
-            "install -Dm755 ./target/release/node -t /app/bin/stremio-service/",
-            "install -Dm755 ./target/release/ffmpeg -t /app/bin/stremio-service/",
-            "install -Dm755 ./target/release/server.js -t /app/bin/stremio-service/",
+            "install -Dm755 ./target/release/stremio-service -t /app/bin/stremio-service/",
+            "install -Dm755 ./resources/bin/node -t /app/bin/stremio-service/",
+            "install -Dm755 ./resources/bin/ffmpeg-linux -t /app/bin/stremio-service/",
+            "install -Dm755 ./resources/bin/server.js -t /app/bin/stremio-service/",
             "install -Dm644 ./flatpak/com.stremio.Service.desktop /app/share/applications/com.stremio.Service.desktop",
             "install -Dm644 ./flatpak/com.stremio.Service.svg /app/share/icons/hicolor/scalable/apps/com.stremio.Service.svg",
             "install -Dm644 ./flatpak/com.stremio.Service.appdata.xml /app/share/metainfo/com.stremio.Service.appdata.xml"

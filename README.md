@@ -7,6 +7,10 @@
 
 ## Development
 
+```
+git clone --recurse-submodules https://github.com/Stremio/stremio-service
+```
+
 ### Requirements
 
 #### Windows

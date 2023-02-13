@@ -22,6 +22,15 @@ jobs:
         with:
           files: target/release/ffmpeg.exe target/release/node.exe target/release/service.exe target/release/server.js
           dest: stremio-service-windows.zip
+      - name: Installer
+        run: "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "setup\StremioService.iss"
+      - uses: shallwefootball/s3-upload-action@master
+        with:
+          aws_key_id: ${{ secrets.AWS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY}}
+          aws_bucket: ${{ secrets.AWS_BUCKET }}
+          source_dir: 'Stremio Service*.*.*.exe'
+          destination_dir: 'stremio-service'
       - name: Upload windows release
         uses: svenstaro/upload-release-action@v1-release
         with:

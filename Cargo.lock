@@ -2451,6 +2451,7 @@ version = "0.1.0"
 dependencies = [
  "bytes",
  "cargo_toml",
+ "chrono",
  "clap",
  "dirs 4.0.0",
  "embed-resource",
@@ -2471,6 +2472,7 @@ dependencies = [
  "tar",
  "tokio",
  "urlencoding",
+ "winres",
  "xz",
  "zip-extract",
 ]
@@ -3234,6 +3236,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "80d0f4e272c85def139476380b12f9ac60926689dd2e01d4923222f40580869d"
 dependencies = [
  "winapi",
+]
+
+[[package]]
+name = "winres"
+version = "0.1.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b68db261ef59e9e52806f688020631e987592bd83619edccda9c47d42cde4f6c"
+dependencies = [
+ "toml",
 ]
 
 [[package]]

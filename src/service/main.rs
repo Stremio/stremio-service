@@ -1,3 +1,4 @@
+#![windows_subsystem = "windows"]
 mod updater;
 mod server;
 

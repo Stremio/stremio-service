@@ -1,9 +1,16 @@
-use std::{error::Error, fs, path::PathBuf, io::Cursor};
+use std::{env, error::Error, fs, io::Cursor, path::PathBuf};
 
 use bytes::Bytes;
 use flate2::bufread::GzDecoder;
+#[cfg(not(target_os = "windows"))]
 use tar::Archive;
 use xz::bufread::XzDecoder;
+
+#[cfg(target_os = "windows")]
+use chrono::{Datelike, Local};
+
+#[cfg(target_os = "windows")]
+extern crate winres;
 
 const STREMIO_SERVER: &str = "https://dl.strem.io/four/master/server.js";
 #[cfg(target_os = "windows")]
@@ -47,24 +54,46 @@ fn main() -> Result<(), Box<dyn Error>> {
         fs::write(target_bin_path.join("server.js"), server_js_file)?;
     }
 
-    #[cfg(target_os = "windows")] {
+    #[cfg(target_os = "windows")]
+    {
         extract_zip(NODE_WINDOWS_ARCHIVE, "node.exe", target_bin_path.clone())?;
     }
 
-    #[cfg(target_os = "linux")] {
-        extract_tar::<XzDecoder<Cursor<Bytes>>>(NODE_LINUX_ARCHIVE, "bin/node", "node", &target_bin_path)?;
+    #[cfg(target_os = "linux")]
+    {
+        extract_tar::<XzDecoder<Cursor<Bytes>>>(
+            NODE_LINUX_ARCHIVE,
+            "bin/node",
+            "node",
+            &target_bin_path,
+        )?;
     }
 
-    #[cfg(target_os = "macos")] {
-        extract_tar::<GzDecoder<Cursor<Bytes>>>(NODE_MACOS_ARCHIVE, "bin/node", "node", &target_bin_path)?;
+    #[cfg(target_os = "macos")]
+    {
+        extract_tar::<GzDecoder<Cursor<Bytes>>>(
+            NODE_MACOS_ARCHIVE,
+            "bin/node",
+            "node",
+            &target_bin_path,
+        )?;
     }
 
     let binaries_dir = current_dir.join("binaries");
     copy_binaries(binaries_dir, &target_bin_path)?;
 
-    #[cfg(target_os = "windows")] {
-        let resources_file = current_dir.join("resources").join("resources.rc");
-        embed_resource::compile(resources_file.to_str().unwrap());
+    #[cfg(target_os = "windows")]
+    {
+        let now = Local::now();
+        let copyright = format!("Copyright © {} Smart Code OOD", now.year());
+        let mut res = winres::WindowsResource::new();
+        res.set(
+            "FileDescription",
+            &env::var("CARGO_PKG_DESCRIPTION").unwrap(),
+        );
+        res.set("LegalCopyright", &copyright);
+        res.set_icon_with_id("resources/service.ico", "ICON");
+        res.compile().unwrap();
     }
 
     Ok(())
@@ -86,7 +115,13 @@ fn extract_zip(url: &str, file_name: &str, out: PathBuf) -> Result<(), Box<dyn E
     Ok(())
 }
 
-fn extract_tar<D: Decoder + std::io::Read>(url: &str, file_path: &str, out_name: &str, out: &PathBuf) -> Result<(), Box<dyn Error>> {
+#[cfg(not(target_os = "windows"))]
+fn extract_tar<D: Decoder + std::io::Read>(
+    url: &str,
+    file_path: &str,
+    out_name: &str,
+    out: &PathBuf,
+) -> Result<(), Box<dyn Error>> {
     let target = out.join(out_name);
     if !target.exists() {
         let archive_file = reqwest::blocking::get(url)?.bytes()?;
@@ -98,7 +133,7 @@ fn extract_tar<D: Decoder + std::io::Read>(url: &str, file_path: &str, out_name:
             if path.ends_with(file_path) {
                 file.unpack(target.clone())?;
             }
-        }            
+        }
     }
 
     Ok(())
@@ -112,10 +147,11 @@ fn copy_binaries(binaries_dir: PathBuf, path: &PathBuf) -> Result<(), Box<dyn Er
             Ok(file) => {
                 let file_name = file.file_name().into_string().unwrap();
                 if file_name.contains(&platform_string) {
-                    let final_file_name = file_name.replace(format!("-{}", platform_string).as_str(), "");
+                    let final_file_name =
+                        file_name.replace(format!("-{}", platform_string).as_str(), "");
                     fs::copy(file.path(), path.join(final_file_name))?;
                 }
-            },
+            }
             _ => {}
         }
     }

@@ -28,14 +28,16 @@ jobs:
       - name: Upload to Amazon S3
         uses: Noelware/s3-action@master
         with:
-          files: |
-            Stremio Service*.exe
-          access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
-          secret-key: ${{ secrets.AWS_SECRET_KEY}}
-          bucket: stremio-artifacts
           endpoint: https://s3.amazonaws.com
-          prefix: /stremio-service
           region: eu-west-1
+          bucket: stremio-artifacts
+          access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          secret-key: ${{ secrets.AWS_SECRET_KEY }}
+          object-acl: public-read
+          prefix: /stremio-service
+          path-format: $(prefix)/$(tag)/$(file)
+          files: |
+            StremioService.exe
       - name: Upload windows release
         uses: svenstaro/upload-release-action@v1-release
         with:

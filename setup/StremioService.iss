@@ -1,4 +1,5 @@
 #define MyAppName "Stremio Service"
+#define MyAppShortName "StremioService"
 #define MyAppExeName "service.exe"
 #define MyAppBinLocation SourcePath + "..\target\release\"
 #define MyAppExeLocation MyAppBinLocation + MyAppExeName
@@ -13,7 +14,7 @@
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
-AppId={{DD3870DA-AF3C-4C73-B010-72944AB610C6}
+AppId={DD3870DA-AF3C-4C73-B010-72944AB610C6}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
@@ -21,7 +22,7 @@ AppCopyright={#MyAppCopyright}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
-DefaultDirName={autopf}\{#MyAppName}
+DefaultDirName={autopf}\{#MyAppShortName}
 SetupMutex=StremioServiceSetupMutex,Global\StremioServiceSetupMutex
 ; Remove the following line to run in administrative install mode (install for all users.)
 PrivilegesRequired=lowest
@@ -30,7 +31,7 @@ DisableDirPage=yes
 DisableProgramGroupPage=yes
 ; DisableFinishedPage=yes
 ChangesAssociations=yes
-OutputBaseFilename={#MyAppName} {#MyAppVersion}
+OutputBaseFilename={#MyAppShortName}
 OutputDir=..
 Compression=lzma
 SolidCompression=yes

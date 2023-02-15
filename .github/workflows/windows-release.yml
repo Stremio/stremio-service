@@ -29,7 +29,7 @@ jobs:
         uses: Noelware/s3-action@master
         with:
           files: |
-            'Stremio Service*.*.*.exe'
+            Stremio Service*.exe
           access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
           secret-key: ${{ secrets.AWS_SECRET_KEY}}
           bucket: stremio-artifacts

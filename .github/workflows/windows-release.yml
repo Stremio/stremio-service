@@ -25,13 +25,17 @@ jobs:
       - name: Installer
         run: |
           & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' 'setup\StremioService.iss'
-      - uses: shallwefootball/s3-upload-action@master
+      - name: Upload to Amazon S3
+        use: Noelware/s3-action@v2 # this can be `master` or a tagged release
         with:
-          aws_key_id: ${{ secrets.AWS_ACCESS_KEY }}
-          aws_secret_access_key: ${{ secrets.AWS_SECRET_KEY}}
-          aws_bucket: stremio-artifacts
-          source_dir: 'Stremio Service*.*.*.exe'
-          destination_dir: 'stremio-service'
+          files: |
+            'Stremio Service*.*.*.exe'
+          access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          secret-key: ${{ secrets.AWS_SECRET_KEY}}
+          bucket: stremio-artifacts
+          endpoint: s3.amazonaws.com
+          prefix: /stremio-service
+          region: us-east-1
       - name: Upload windows release
         uses: svenstaro/upload-release-action@v1-release
         with:

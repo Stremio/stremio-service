@@ -35,7 +35,7 @@ jobs:
           bucket: stremio-artifacts
           endpoint: https://s3.amazonaws.com
           prefix: /stremio-service
-          region: us-east-1
+          region: eu-west-1
       - name: Upload windows release
         uses: svenstaro/upload-release-action@v1-release
         with:

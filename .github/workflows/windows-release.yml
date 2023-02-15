@@ -33,7 +33,6 @@ jobs:
           access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
           secret-key: ${{ secrets.AWS_SECRET_KEY}}
           bucket: stremio-artifacts
-          endpoint: s3.amazonaws.com
           prefix: /stremio-service
           region: us-east-1
       - name: Upload windows release

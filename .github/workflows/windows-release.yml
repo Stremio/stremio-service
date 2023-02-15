@@ -26,7 +26,7 @@ jobs:
         run: |
           & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' 'setup\StremioService.iss'
       - name: Upload to Amazon S3
-        use: Noelware/s3-action@v2 # this can be `master` or a tagged release
+        uses: Noelware/s3-action@v2 # this can be `master` or a tagged release
         with:
           files: |
             'Stremio Service*.*.*.exe'

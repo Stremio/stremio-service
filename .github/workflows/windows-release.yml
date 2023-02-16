@@ -25,14 +25,20 @@ jobs:
       - name: Installer
         run: |
           & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' 'setup\StremioService.iss'
-      - name: Install s3cmd
-        run: sudo apt -y install s3cmd
-      - name: Upload build artifacts to AWS
-        shell: bash
-        env:
-          AWS_REGION: eu-west-1
-        run: |
-          s3cmd --acl-public --access_key=${{ secrets.AWS_ACCESS_KEY }} --region=$AWS_REGION --secret_key=${{ secrets.AWS_SECRET_KEY }} --force put StremioService*.exe s3://stremio-artifacts/stremio-service/${{ github.ref_name }}/
+
+      - name: Upload to Amazon S3
+        uses: Noelware/s3-action@master
+        with:
+          endpoint: https://s3.amazonaws.com
+          region: eu-west-1
+          bucket: stremio-artifacts
+          access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          secret-key: ${{ secrets.AWS_SECRET_KEY }}
+          object-acl: public-read
+          prefix: stremio-service/${{ github.ref_name }}
+          path-format: $(prefix)/$(file)
+          files: |
+            StremioService.exe
       - name: Upload windows release
         uses: svenstaro/upload-release-action@v1-release
         with:

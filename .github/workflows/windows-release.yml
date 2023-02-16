@@ -31,7 +31,7 @@ jobs:
         with:
           prefix: stremio-service/${{ github.ref_name }}/
           bucket_name: stremio-artifacts
-          endpoint: stremio-artifacts.eu-west-1.amazonaws.com
+          endpoint: https://stremio-artifacts.eu-west-1.amazonaws.com
           region: eu-west-1
           access_key_id: ${{ secrets.AWS_ACCESS_KEY }}
           secret_access_key: ${{ secrets.AWS_SECRET_KEY }}

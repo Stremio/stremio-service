@@ -27,18 +27,17 @@ jobs:
           & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' 'setup\StremioService.iss'
 
       - name: Upload to Amazon S3
-        uses: Noelware/s3-action@master
+        uses: jakejarvis/s3-sync-action@master
         with:
-          endpoint: https://s3.amazonaws.com
-          region: eu-west-1
-          bucket: stremio-artifacts
-          access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
-          secret-key: ${{ secrets.AWS_SECRET_KEY }}
-          object-acl: public-read
-          prefix: stremio-service/${{ github.ref_name }}
-          path-format: $(prefix)/$(file)
-          files: |
-            StremioService.exe
+          args: --acl public-read --follow-symlinks --delete
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY }}
+          AWS_REGION: 'eu-west-1'
+          AWS_S3_BUCKET: stremio-artifacts
+          SOURCE_DIR: 'StremioService.exe'
+          DEST_DIR: stremio-service/${{ github.ref_name }}
+
       - name: Upload windows release
         uses: svenstaro/upload-release-action@v1-release
         with:

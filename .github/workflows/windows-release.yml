@@ -27,7 +27,7 @@ jobs:
           & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' 'setup\StremioService.iss'
 
       - name: Upload to Amazon S3
-        uses: caffco/s3-glob-sync-github-action@v1.0.0
+        uses: caffco/s3-glob-sync-github-action@v0.0.2-alpha.1
         with:
           prefix: stremio-service/${{ github.ref_name }}/
           bucket_name: stremio-artifacts

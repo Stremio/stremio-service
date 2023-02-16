@@ -35,7 +35,7 @@ jobs:
 
       - name: Upload to Amazon S3
         run: |
-          aws s3 cp --acl public-read StremioService.exe s3://stremio-artifacts/stremio-service/${{ github.ref_name }}/
+          aws s3 cp --acl public-read StremioServiceSetup.exe s3://stremio-artifacts/stremio-service/${{ github.ref_name }}/
 
       - name: Upload windows release
         uses: svenstaro/upload-release-action@v1-release

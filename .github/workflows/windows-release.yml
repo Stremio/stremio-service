@@ -27,14 +27,18 @@ jobs:
           & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' 'setup\StremioService.iss'
 
       - name: Upload to Amazon S3
-        uses: prewk/s3-cp-action@v2
+        uses: caffco/s3-glob-sync-github-action@v1.0.0
         with:
-          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY }}
-          aws_secret_access_key: ${{ secrets.AWS_SECRET_KEY }}
-          aws_region: eu-west-1
-          source: './StremioService.exe'
-          dest: 's3://stremio-artifacts/stremio-service/${{ github.ref_name }}/'
-          flags: --acl-public
+          prefix: stremio-service/${{ github.ref_name }}/
+          bucket_name: stremio-artifacts
+          endpoint: stremio-artifacts.eu-west-1.amazonaws.com
+          region: eu-west-1
+          access_key_id: ${{ secrets.AWS_ACCESS_KEY }}
+          secret_access_key: ${{ secrets.AWS_SECRET_KEY }}
+          mode: upload
+          acl: public
+          patterns: |
+            StremioService.exe
 
       - name: Upload windows release
         uses: svenstaro/upload-release-action@v1-release

@@ -132,8 +132,3 @@ bins = [
     ["resources/bin/server.js", "server.js"],
     ["resources/bin/ffmpeg-macos", "ffmpeg-macos"]
 ]
-
-[package.metadata.wix]
-# there is no way to enable features for wix build
-# because it takes an already built binary to
-# create the msi installer

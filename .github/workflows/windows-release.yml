@@ -21,8 +21,23 @@ jobs:
         uses: vimtor/action-zip@v1
         with:
           # todo: add license
-          files: resources/bin/ffmpeg-windows.exe resources/bin/node.exe target/release/stremio-service.exe resources/bin/server.js
+          files: resources/bin/ffmpeg-windows.exe resources/bin/ffprobe.exe resources/bin/node.exe target/release/updater.exe target/release/stremio-service.exe resources/bin/server.js
           dest: stremio-service-windows.zip
+      - name: Installer
+        run: |
+          & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' 'setup\StremioService.iss'
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-region: eu-west-1
+
+      - name: Upload to Amazon S3
+        run: |
+          aws s3 cp --acl public-read StremioServiceSetup.exe s3://stremio-artifacts/stremio-service/${{ github.ref_name }}/
+
       - name: Upload windows release
         uses: svenstaro/upload-release-action@v1-release
         with:

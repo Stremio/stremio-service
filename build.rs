@@ -8,6 +8,9 @@ use std::path::PathBuf;
 use tar::Archive;
 use xz::bufread::XzDecoder;
 
+#[cfg(target_os = "windows")]
+use chrono::{Datelike, Local};
+
 const STREMIO_SERVER: &str = "https://dl.strem.io/four/master/server.js";
 #[cfg(target_os = "windows")]
 const NODE_WINDOWS_ARCHIVE: &str = "https://nodejs.org/dist/v18.12.1/node-v18.12.1-win-x64.zip";
@@ -16,7 +19,7 @@ const NODE_LINUX_ARCHIVE: &str = "https://nodejs.org/dist/v18.12.1/node-v18.12.1
 #[cfg(target_os = "macos")]
 const NODE_MACOS_ARCHIVE: &str = "https://nodejs.org/dist/v18.12.1/node-v18.12.1-darwin-x64.tar.gz";
 
-trait Decoder {
+trait Decoder: std::io::Read {
     fn new(r: Cursor<Bytes>) -> Self;
 }
 
@@ -72,8 +75,16 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     #[cfg(target_os = "windows")]
     {
-        let resources_file = resource_dir.join("resources.rc");
-        embed_resource::compile(resources_file.to_str().unwrap());
+        let now = Local::now();
+        let copyright = format!("Copyright © {} Smart Code OOD", now.year());
+        let mut res = winres::WindowsResource::new();
+        res.set(
+            "FileDescription",
+            &std::env::var("CARGO_PKG_DESCRIPTION").unwrap(),
+        );
+        res.set("LegalCopyright", &copyright);
+        res.set_icon_with_id("resources/service.ico", "ICON");
+        res.compile().unwrap();
     }
 
     Ok(())
@@ -96,7 +107,7 @@ fn extract_zip(url: &str, file_name: &str, out: &Path) -> Result<(), Box<dyn Err
 }
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
-fn extract_tar<D: Decoder + std::io::Read>(
+fn extract_tar<D: Decoder>(
     url: &str,
     file_path: &str,
     out_name: &str,

@@ -16,11 +16,12 @@ jobs:
         with:
           toolchain: stable
       - name: Build
-        run: cargo build --release
+        run: cargo build --release --features=bundled
       - name: Zip release for windows
         uses: vimtor/action-zip@v1
         with:
-          files: target/release/ffmpeg.exe target/release/node.exe target/release/service.exe target/release/server.js
+          # todo: add license
+          files: resources/bin/ffmpeg-windows.exe resources/bin/node.exe target/release/stremio-service.exe resources/bin/server.js
           dest: stremio-service-windows.zip
       - name: Installer
         run: |

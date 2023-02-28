@@ -25,9 +25,9 @@ jobs:
       - name: Utils
         run: npm install -g create-dmg && brew install graphicsmagick imagemagick
       - name: Build
-        run: cargo build --release
+        run: cargo build --release --features=bundled
       - name: Package
-        run: cargo run --bin build-macos && create-dmg --overwrite target/macos/*.app target/macos 2> /dev/null
+        run: cargo run --bin bundle-macos && create-dmg --overwrite target/macos/*.app target/macos 2> /dev/null
       - name: Upload dmg release
         uses: svenstaro/upload-release-action@v1-release
         with:
@@ -39,7 +39,8 @@ jobs:
       - name: Zip release for macos
         uses: vimtor/action-zip@v1
         with:
-          files: target/release/ffmpeg target/release/node target/release/service target/release/server.js
+          # todo: add license
+          files: resources/bin/ffmpeg-macos resources/bin/node target/release/stremio-service resources/bin/server.js
           dest: stremio-service-macos.zip
       - name: Upload zip release
         uses: svenstaro/upload-release-action@v1-release

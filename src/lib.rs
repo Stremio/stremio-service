@@ -1,2 +1,5 @@
+pub mod app;
 pub mod config;
-pub mod shared;
+pub mod server;
+pub mod updater;
+pub mod util;

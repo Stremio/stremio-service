@@ -123,7 +123,7 @@ impl Config {
         match operating_system.unwrap_or(std::env::consts::OS) {
             "linux" => Ok("node"),
             "macos" => Ok("node"),
-            "windows" => Ok("stremio-runtime.exe"),
+            "windows" => Ok("node.exe"),
             os => bail!("Operating system {} is not supported", os),
         }
     }

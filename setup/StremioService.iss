@@ -147,7 +147,7 @@ Source: "{#MyAppExeLocation}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyAppBinLocation}updater.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyAppResBinLocation}ffmpeg-windows.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyAppResBinLocation}ffprobe.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#MyAppResBinLocation}stremio-runtime.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#MyAppResBinLocation}node.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyAppResBinLocation}server.js"; DestDir: "{app}"; Flags: ignoreversion
 
 [Registry]

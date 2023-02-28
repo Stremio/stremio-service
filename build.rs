@@ -2,8 +2,6 @@ use std::{error::Error, fs, io::Cursor, path::Path};
 
 use bytes::Bytes;
 use flate2::bufread::GzDecoder;
-#[cfg(target_os = "windows")]
-use std::path::PathBuf;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 use tar::Archive;
 use xz::bufread::XzDecoder;
@@ -19,7 +17,7 @@ const NODE_LINUX_ARCHIVE: &str = "https://nodejs.org/dist/v18.12.1/node-v18.12.1
 #[cfg(target_os = "macos")]
 const NODE_MACOS_ARCHIVE: &str = "https://nodejs.org/dist/v18.12.1/node-v18.12.1-darwin-x64.tar.gz";
 
-trait Decoder {
+trait Decoder: std::io::Read {
     fn new(r: Cursor<Bytes>) -> Self;
 }
 
@@ -94,7 +92,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 fn extract_zip(url: &str, file_name: &str, out: &Path) -> Result<(), Box<dyn Error>> {
     let target = out.join(file_name);
     if !target.exists() {
-        let tmp_dir = PathBuf::from(".tmp");
+        let tmp_dir = std::path::PathBuf::from(".tmp");
         fs::create_dir_all(tmp_dir.clone())?;
 
         let archive_file = reqwest::blocking::get(url)?.bytes()?;
@@ -107,7 +105,7 @@ fn extract_zip(url: &str, file_name: &str, out: &Path) -> Result<(), Box<dyn Err
 }
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
-fn extract_tar<D: Decoder + std::io::Read>(
+fn extract_tar<D: Decoder>(
     url: &str,
     file_path: &str,
     out_name: &str,

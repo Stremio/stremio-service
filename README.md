@@ -15,14 +15,8 @@ git clone --recurse-submodules https://github.com/Stremio/stremio-service
 
 #### Windows
 
-Download & Install [Wix Toolset](https://github.com/wixtoolset/wix3/releases).
+Download & Install [Inno Setup](https://jrsoftware.org/isdl.php).
 
-
-Install `cargo-wix`, a cargo subcommand for building Windows installers.
-
-```
-cargo install cargo-wix
-```
 
 #### Ubuntu
 
@@ -66,17 +60,20 @@ cargo build --release
 
 #### Windows
 
-Build the binaries on Windows in release using the `bundled` feature, since `cargo-wix` does not support passing feature for the build step.
+Build the binaries on Windows in release using the `bundled` feature.
 
 ```
-cargo build --release --target x86_64-pc-windows-gnu --features=bundled
+cargo build --release --features=bundled
 ```
 
-Run `cargo-wix` command inside `Developer Command Prompt for VS 2019`
+Run the Inno Setup compiler `ISCC` command inside `Command Prompt` or `PowerShell` against the `StremioService.iss` script. Depending on your installation the path to `IISC` may vary. Here is an example with the default installation path, presuming your current working directory is the project's root:
 
 ```
-cargo wix --no-build
+"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "setup\StremioService.iss"
 ```
+If you use `PowerShell` you need to prepend `&` in the beginning of the line.
+A new executable should be produced - `StremioServiceSetup.exe`
+
 
 ##### Cross-compilation from Linux
 
@@ -92,7 +89,7 @@ rustup target add x86_64-pc-windows-gnu
 cargo build --release --target x86_64-pc-windows-gnu --features=bundled
 ```
 
-**NOTE:** `cargo-wix` **does not** support building an `.msi` installer on other platforms, only **Windows**.
+**NOTE:** The Windows installed can **not** be built on other platforms, only **Windows**.
 
 #### Ubuntu
 

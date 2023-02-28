@@ -1,4 +1,4 @@
-use std::{env, error::Error, fs, io::Cursor, path::PathBuf};
+use std::{error::Error, fs, io::Cursor, path::PathBuf};
 
 use bytes::Bytes;
 use flate2::bufread::GzDecoder;
@@ -8,9 +8,6 @@ use xz::bufread::XzDecoder;
 
 #[cfg(target_os = "windows")]
 use chrono::{Datelike, Local};
-
-#[cfg(target_os = "windows")]
-extern crate winres;
 
 const STREMIO_SERVER: &str = "https://dl.strem.io/four/master/server.js";
 #[cfg(target_os = "windows")]
@@ -89,7 +86,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         let mut res = winres::WindowsResource::new();
         res.set(
             "FileDescription",
-            &env::var("CARGO_PKG_DESCRIPTION").unwrap(),
+            &std::env::var("CARGO_PKG_DESCRIPTION").unwrap(),
         );
         res.set("LegalCopyright", &copyright);
         res.set_icon_with_id("resources/service.ico", "ICON");

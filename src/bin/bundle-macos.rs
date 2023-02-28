@@ -36,16 +36,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         .join("macos");
     std::fs::create_dir_all(target_path.clone())?;
 
-    let bundle_path = target_path
-        .join(metadata.name + ".app");
+    let bundle_path = target_path.join(metadata.name + ".app");
 
     if bundle_path.exists() {
         std::fs::remove_dir_all(bundle_path.clone())?;
     }
     std::fs::create_dir_all(bundle_path.clone())?;
 
-    let contents_path = bundle_path
-        .join("Contents");
+    let contents_path = bundle_path.join("Contents");
     std::fs::create_dir_all(contents_path.clone())?;
 
     let info_plist = format!("
@@ -54,61 +52,56 @@ fn main() -> Result<(), Box<dyn Error>> {
         <plist version=\"1.0\">
             <dict>
                 <key>CFBundleDisplayName</key>
-                <string>{}</string>
+                <string>{display_name}</string>
                 <key>CFBundleIdentifier</key>
-                <string>{}</string>
+                <string>{identifier}</string>
                 <key>CFBundleVersion</key>
-                <string>{}</string>
+                <string>{version}</string>
                 <key>CFBundleShortVersionString</key>
-                <string>{}</string>
+                <string>{version}</string>
                 <key>CFBundleIconFile</key>
-                <string>{}</string>
+                <string>{icon_file}</string>
                 <key>CFBundleExecutable</key>
-                <string>{}</string>
+                <string>{executable}</string>
                 <key>NSHumanReadableCopyright</key>
-                <string>{}</string>
+                <string>{copyright}</string>
                 <key>CFBundleURLTypes</key>
                 <array>
                     <dict>
                         <key>CFBundleURLName</key>
-                        <string>{}</string>
+                        <string>{url_name}</string>
                         <key>CFBundleURLSchemes</key>
                         <array>
-                            <string>{}</string>
+                            <string>{url_scheme}</string>
                         </array>
                     </dict>
                 </array>
             </dict>
         </plist>
     ",
-        metadata.display_name,
-        metadata.identifier,
-        env!("CARGO_PKG_VERSION"),
-        env!("CARGO_PKG_VERSION"),
-        metadata.icon[1],
-        metadata.executable,
-        metadata.copyright,
-        metadata.display_name,
-        metadata.url_scheme
+        display_name = metadata.display_name,
+        identifier = metadata.identifier,
+        version = env!("CARGO_PKG_VERSION"),
+        icon_file = metadata.icon[1],
+        executable = metadata.executable,
+        copyright = metadata.copyright,
+        url_name = metadata.display_name,
+        url_scheme = metadata.url_scheme
     );
     std::fs::write(contents_path.join("Info.plist"), info_plist)?;
 
-    let bins_path = contents_path
-        .join("MacOS");
+    let bins_path = contents_path.join("MacOS");
     std::fs::create_dir_all(bins_path.clone())?;
-        
+
     for bin in metadata.bins {
-        let target_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join(bin[0].clone());
+        let target_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(bin[0].clone());
         std::fs::copy(target_path, bins_path.join(bin[1].clone()))?;
     }
 
-    let resources_path = contents_path
-        .join("Resources");
+    let resources_path = contents_path.join("Resources");
     std::fs::create_dir_all(resources_path.clone())?;
-        
-    let icon_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join(metadata.icon[0].clone());
+
+    let icon_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(metadata.icon[0].clone());
     std::fs::copy(icon_path, resources_path.join(metadata.icon[1].clone()))?;
 
     Ok(())

@@ -1,6 +1,9 @@
-use std::{env, path::PathBuf};
-use tao::system_tray;
 use log::error;
+use std::{
+    env,
+    path::{Path, PathBuf},
+};
+use tao::system_tray;
 
 pub fn load_icon(buffer: &[u8]) -> system_tray::Icon {
     let (icon_rgba, icon_width, icon_height) = {
@@ -12,26 +15,20 @@ pub fn load_icon(buffer: &[u8]) -> system_tray::Icon {
 
         (rgba, width, height)
     };
-    system_tray::Icon::from_rgba(icon_rgba, icon_width, icon_height)
-        .expect("Failed to open icon")
+    system_tray::Icon::from_rgba(icon_rgba, icon_width, icon_height).expect("Failed to open icon")
 }
 
 pub fn get_current_exe_dir() -> PathBuf {
-    let current_exe_location = env::current_exe()
-        .expect("Failed to get current executable location");
-    let current_exe_dir = current_exe_location.parent()
+    let current_exe_location =
+        env::current_exe().expect("Failed to get current executable location");
+    let current_exe_dir = current_exe_location
+        .parent()
         .expect("Failed to get current executable directory");
 
     PathBuf::from(current_exe_dir)
 }
 
-pub fn join_current_exe_dir(append: &str) -> PathBuf {
-    let current_exe_dir = get_current_exe_dir();
-    current_exe_dir.join(PathBuf::from(append))
-}
-
-pub fn create_dir_if_does_not_exists(path_string: &str) {
-    let path = PathBuf::from(path_string);
+pub fn create_dir_if_does_not_exists(path: &Path) {
     if !path.exists() {
         if let Err(e) = std::fs::create_dir_all(path.clone()) {
             error!("Failed to create {:?} path: {}", path, e);

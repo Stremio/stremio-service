@@ -50,7 +50,12 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     #[cfg(target_os = "windows")]
     {
-        extract_zip(NODE_WINDOWS_ARCHIVE, "node.exe", &resource_bin_dir)?;
+        extract_zip(
+            NODE_WINDOWS_ARCHIVE,
+            "node.exe",
+            "stremio-runtime.exe",
+            &resource_bin_dir
+        )?;
     }
 
     #[cfg(target_os = "linux")]
@@ -58,7 +63,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         extract_tar::<XzDecoder<Cursor<Bytes>>>(
             NODE_LINUX_ARCHIVE,
             "bin/node",
-            "node",
+            "stremio-runtime",
             &resource_bin_dir,
         )?;
     }
@@ -68,7 +73,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         extract_tar::<GzDecoder<Cursor<Bytes>>>(
             NODE_MACOS_ARCHIVE,
             "bin/node",
-            "node",
+            "stremio-runtime",
             &resource_bin_dir,
         )?;
     }
@@ -91,15 +96,15 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 
 #[cfg(target_os = "windows")]
-fn extract_zip(url: &str, file_name: &str, out: &Path) -> Result<(), Box<dyn Error>> {
-    let target = out.join(file_name);
+fn extract_zip(url: &str, file_path: &str, out_name: &str, out: &Path) -> Result<(), Box<dyn Error>> {
+    let target = out.join(out_name);
     if !target.exists() {
         let tmp_dir = PathBuf::from(".tmp");
         fs::create_dir_all(tmp_dir.clone())?;
 
         let archive_file = reqwest::blocking::get(url)?.bytes()?;
         zip_extract::extract(Cursor::new(archive_file), &tmp_dir, true)?;
-        fs::copy(tmp_dir.join(file_name), target)?;
+        fs::copy(tmp_dir.join(file_path), target)?;
         fs::remove_dir_all(tmp_dir)?;
     }
 

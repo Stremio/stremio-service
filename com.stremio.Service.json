@@ -30,7 +30,7 @@
         ],
         "post-install": [
             "install -Dm755 ./target/release/stremio-service -t /app/bin/stremio-service/",
-            "install -Dm755 ./resources/bin/node -t /app/bin/stremio-service/",
+            "install -Dm755 ./resources/bin/stremio-runtime -t /app/bin/stremio-service/",
             "install -Dm755 ./resources/bin/ffmpeg-linux -t /app/bin/stremio-service/",
             "install -Dm755 ./resources/bin/server.js -t /app/bin/stremio-service/",
             "install -Dm644 ./flatpak/com.stremio.Service.desktop /app/share/applications/com.stremio.Service.desktop",

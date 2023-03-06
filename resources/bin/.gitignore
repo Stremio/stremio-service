@@ -1,4 +1,4 @@
 !.gitignore
 !ffmpeg-*
-node*
+stremio-runtime*
 *.js

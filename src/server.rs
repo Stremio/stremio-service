@@ -23,9 +23,9 @@ pub struct Config {
     /// nodejs binary path
     ///
     /// Includes the OS-dependent suffix:
-    /// - `linux` - `node`
-    /// - `macos` - `node`
-    /// - `windows` - `node.exe`
+    /// - `linux` - `stremio-runtime`
+    /// - `macos` - `stremio-runtime`
+    /// - `windows` - `stremio-runtime.exe`
     node: PathBuf,
     /// ffmpeg binary path
     ///
@@ -43,7 +43,7 @@ impl Config {
     ///
     /// The directory should contain the following binaries:
     ///
-    /// - node(.exe) - depending on target OS being `windows` or not.
+    /// - stremio-runtime(.exe) - depending on target OS being `windows` or not.
     /// - ffmpeg(-linux | -macos | -windows.exe) - depending on the target OS.
     /// - server.js
     ///
@@ -110,9 +110,9 @@ impl Config {
     /// Returns the node binary name (Operating system dependent).
     ///
     /// Supports only 3 OSes:
-    /// - `linux` - returns `node`
-    /// - `macos` returns `node`
-    /// - `windows` returns `node.exe`
+    /// - `linux` - returns `stremio-runtime`
+    /// - `macos` returns `stremio-runtime`
+    /// - `windows` returns `stremio-runtime.exe`
     ///
     /// If no OS is supplied, [`std::env::consts::OS`] is used.
     ///
@@ -121,9 +121,9 @@ impl Config {
     /// If any other OS is supplied, see [`std::env::consts::OS`] for more details.
     pub fn node_bin(operating_system: Option<&str>) -> Result<&'static str, Error> {
         match operating_system.unwrap_or(std::env::consts::OS) {
-            "linux" => Ok("node"),
-            "macos" => Ok("node"),
-            "windows" => Ok("node.exe"),
+            "linux" => Ok("stremio-runtime"),
+            "macos" => Ok("stremio-runtime"),
+            "windows" => Ok("stremio-runtime.exe"),
             os => bail!("Operating system {} is not supported", os),
         }
     }

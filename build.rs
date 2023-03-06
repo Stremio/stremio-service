@@ -1,12 +1,19 @@
 use std::{error::Error, fs, io::Cursor, path::Path};
 
 use bytes::Bytes;
-use flate2::bufread::GzDecoder;
+
 #[cfg(target_os = "windows")]
-use std::path::PathBuf;
+use {
+    winres_edit::{Resources, resource_type, Id},
+    std::path::PathBuf,
+};
+
 #[cfg(any(target_os = "linux", target_os = "macos"))]
-use tar::Archive;
-use xz::bufread::XzDecoder;
+use {
+    tar::Archive,
+    xz::bufread::XzDecoder,
+    flate2::bufread::GzDecoder,
+};
 
 #[cfg(target_os = "windows")]
 use chrono::{Datelike, Local};
@@ -23,12 +30,14 @@ trait Decoder: std::io::Read {
     fn new(r: Cursor<Bytes>) -> Self;
 }
 
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 impl Decoder for XzDecoder<Cursor<Bytes>> {
     fn new(r: Cursor<Bytes>) -> Self {
         XzDecoder::new(r)
     }
 }
 
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 impl Decoder for GzDecoder<Cursor<Bytes>> {
     fn new(r: Cursor<Bytes>) -> Self {
         GzDecoder::new(r)
@@ -56,6 +65,32 @@ fn main() -> Result<(), Box<dyn Error>> {
             "stremio-runtime.exe",
             &resource_bin_dir
         )?;
+
+        let now = Local::now();
+        let copyright = format!("Copyright © {} Smart Code OOD", now.year());
+        let description = std::env::var("CARGO_PKG_DESCRIPTION").unwrap();
+
+        let runtime_info = [
+            ("ProductName", "Stremio Runtime"),
+            ("FileDescription", &description),
+            ("LegalCopyright", &copyright),
+            ("CompanyName", "Stremio"),
+            ("InternalName", "stremio-runtime"),
+            ("OriginalFilename", "stremio-runtime.exe"),
+        ];
+
+        edit_exe_resources(
+            &resource_bin_dir.join("stremio-runtime.exe"),
+            &resource_dir.join("runtime.ico"),
+            &runtime_info
+        )?;
+
+        let mut res = winres::WindowsResource::new();
+        res.set_toolkit_path("C:\\Program Files (x86)\\Windows Kits\\10\\bin\\10.0.22621.0\\x64");
+        res.set("FileDescription", &description);
+        res.set("LegalCopyright", &copyright);
+        res.set_icon_with_id("resources/service.ico", "ICON");
+        res.compile().unwrap();
     }
 
     #[cfg(target_os = "linux")]
@@ -78,19 +113,40 @@ fn main() -> Result<(), Box<dyn Error>> {
         )?;
     }
 
-    #[cfg(target_os = "windows")]
-    {
-        let now = Local::now();
-        let copyright = format!("Copyright © {} Smart Code OOD", now.year());
-        let mut res = winres::WindowsResource::new();
-        res.set(
-            "FileDescription",
-            &std::env::var("CARGO_PKG_DESCRIPTION").unwrap(),
-        );
-        res.set("LegalCopyright", &copyright);
-        res.set_icon_with_id("resources/service.ico", "ICON");
-        res.compile().unwrap();
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn edit_exe_resources(file_path: &PathBuf, icon_path: &PathBuf, info: &[(&str, &str)]) -> Result<(), Box<dyn Error>> {
+    let icon = std::fs::File::open(icon_path)?;
+    let icon_dir = ico::IconDir::read(icon).unwrap();
+
+    let mut resources = Resources::new(file_path);
+    resources.load()?;
+    resources.open()?;
+
+    for (i, entry) in icon_dir.entries().iter().enumerate() {
+        resources.find(resource_type::ICON, Id::Integer((i as u16) + 1))
+            .expect(&format!("Failed to find icon {}", i))
+            .replace(entry.data())?
+            .update()?;
     }
+
+    match resources.get_version_info() {
+        Ok(version_info) => {
+            match version_info {
+                Some(mut version_info) => {
+                    version_info
+                        .insert_strings(info)
+                        .update()?;
+                },
+                _ => {},
+            }
+        },
+        Err(_) => eprintln!("Failed to get version info"),
+    }
+
+    resources.close();
 
     Ok(())
 }

@@ -128,7 +128,7 @@ copyright = "Copyright © 2022 Smart Code OOD"
 url_scheme = "stremio"
 executable = "stremio-service"
 bins = [
-    ["target/release/stremio-service.exe", "stremio-service"],
+    ["target/release/stremio-service", "stremio-service"],
     ["resources/bin/node-macos", "node"],
     ["resources/bin/server.js", "server.js"],
     ["resources/bin/ffmpeg-macos", "ffmpeg"],

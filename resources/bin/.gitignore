@@ -1,4 +1,4 @@
 !.gitignore
 !ffmpeg-*
-node*
+node.exe
 *.js

@@ -28,6 +28,9 @@ jobs:
         run: cargo build --release --features=bundled
       - name: Package
         run: cargo run --bin bundle-macos && create-dmg --overwrite target/macos/*.app target/macos 2> /dev/null
+      - name: Upload to Amazon S3
+        run: |
+          aws s3 cp --acl public-read target/macos/*.dmg s3://stremio-artifacts/stremio-service/${{ github.ref_name }}/
       - name: Upload dmg release
         uses: svenstaro/upload-release-action@v1-release
         with:

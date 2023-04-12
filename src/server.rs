@@ -2,11 +2,13 @@ use anyhow::{anyhow, bail, Context, Error};
 use log::{error, info};
 use once_cell::sync::OnceCell;
 use std::{
+    os::windows::process::CommandExt,
     path::PathBuf,
     process::{Child, Command},
     sync::{Arc, Mutex},
 };
 
+const CREATE_NO_WINDOW: u32 = 0x08000000;
 #[derive(Debug, Clone)]
 pub struct Server {
     inner: Arc<ServerInner>,
@@ -100,8 +102,8 @@ impl Config {
     /// If any other OS is supplied, see [`std::env::consts::OS`] for more details.
     pub fn ffmpeg_bin(operating_system: Option<&str>) -> Result<&'static str, Error> {
         match operating_system.unwrap_or(std::env::consts::OS) {
-            "linux" => Ok("ffmpeg-linux"),
-            "macos" => Ok("ffmpeg-macos"),
+            "linux" => Ok("ffmpeg"),
+            "macos" => Ok("ffmpeg"),
             "windows" => Ok("ffmpeg-windows.exe"),
             os => bail!("Operating system {} is not supported", os),
         }
@@ -141,6 +143,7 @@ impl Server {
 
     pub fn start(&self) -> Result<(), Error> {
         let mut command = Command::new(&self.inner.config.node);
+        command.creation_flags(CREATE_NO_WINDOW);
         command.env("FFMPEG_BIN", &self.inner.config.ffmpeg);
         command.arg(&self.inner.config.server);
 

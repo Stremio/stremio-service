@@ -1,10 +1,10 @@
-use anyhow::{anyhow, bail, Context, Error};
+use anyhow::{anyhow, Context, Error};
 use fslock::LockFile;
 use log::{error, info};
 use rust_embed::RustEmbed;
-use std::path::PathBuf;
 #[cfg(feature = "bundled")]
 use std::path::Path;
+use std::path::PathBuf;
 use tao::{
     event::Event,
     event_loop::{ControlFlow, EventLoop},
@@ -14,10 +14,11 @@ use tao::{
 };
 
 use crate::{
-    config::{DATA_DIR, STREMIO_URL},
+    args::Args,
+    config::{DATA_DIR, STREMIO_URL, UPDATE_ENDPOINT},
     server::Server,
     updater::Updater,
-    util::{get_current_exe_dir, load_icon},
+    util::load_icon,
 };
 use urlencoding::encode;
 
@@ -55,13 +56,8 @@ pub struct Config {
 
     /// The server.js configuration
     server: server::Config,
-
-    /// The location of the updater bin.
-    /// If `Some` it will try to run the updater at the provided location,
-    /// which was is validated beforehand that it is a file and exists!
-    ///
-    /// This should be set **only** if the OS is supported, see [`IS_UPDATER_SUPPORTED`]
-    updater_bin: Option<PathBuf>,
+    pub updater_endpoint: String,
+    pub force_update: bool,
 }
 
 impl Config {
@@ -71,69 +67,24 @@ impl Config {
     ///
     /// If `self_update` is `true` and it is a supported platform for the updater (see [`IS_UPDATER_SUPPORTED`])
     /// it will check for the existence of the `updater` binary at the given location.
-    pub fn new(
-        home_dir: PathBuf,
-        service_bins_dir: PathBuf,
-        self_update: bool,
-    ) -> Result<Self, Error> {
-        let server = server::Config::at_dir(service_bins_dir.clone())
-            .context("Server.js configuration failed")?;
+    pub fn new(args: Args, home_dir: PathBuf, service_bins_dir: PathBuf) -> Result<Self, Error> {
+        let server =
+            server::Config::at_dir(service_bins_dir).context("Server.js configuration failed")?;
 
         let data_dir = home_dir.join(DATA_DIR);
         let lockfile = data_dir.join("lock");
-
-        let updater_bin = match (self_update, IS_UPDATER_SUPPORTED) {
-            (true, true) => {
-                // make sure that the updater exists
-                let bin_path = get_current_exe_dir().join(Self::updater_bin(None)?);
-
-                if bin_path
-                    .try_exists()
-                    .context("Check for updater existence failed")?
-                {
-                    Some(bin_path)
-                } else {
-                    bail!("Couldn't find the updater binary")
-                }
-            }
-            (true, false) => {
-                info!("Self-update is not supported for this OS");
-
-                None
-            }
-            _ => None,
-        };
+        let updater_endpoint = args
+            .updater_endpoint
+            .unwrap_or_else(|| UPDATE_ENDPOINT.to_string());
 
         Ok(Self {
+            updater_endpoint,
             home_dir,
             data_dir,
             lockfile,
             server,
-            updater_bin,
+            force_update: args.force_update,
         })
-    }
-
-    /// Returns the updater binary name (Operating system dependent).
-    ///
-    /// Although the binary name will be returned for Linux OS,
-    /// the updater does **not** run for Linux OS!
-    ///
-    /// Supports only 3 OSes:
-    /// - `linux` - returns `updater`
-    /// - `macos` returns `updater`
-    /// - `windows` returns `updater.exe`
-    ///
-    /// If no OS is supplied, [`std::env::consts::OS`] is used.
-    ///
-    /// # Errors
-    ///
-    /// If any other OS is supplied, see [`std::env::consts::OS`] for more details.
-    pub fn updater_bin(operating_system: Option<&str>) -> Result<&'static str, Error> {
-        match operating_system.unwrap_or(std::env::consts::OS) {
-            "linux" | "macos" => Ok("updater"),
-            "windows" => Ok("updater.exe"),
-            os => bail!("Operating system {} is not supported", os),
-        }
     }
 }
 
@@ -164,29 +115,27 @@ impl Application {
         #[cfg(target_os = "macos")]
         let _fruit_app = register_apple_event_callbacks();
 
-        if let Some(updater_bin) = self.config.updater_bin.as_ref() {
-            let current_version = env!("CARGO_PKG_VERSION")
-                .parse()
-                .expect("Should always be valid");
-            let updater = Updater::new(current_version, updater_bin.clone());
-            let updated = updater.prompt_and_update().await;
+        // Showing the system tray icon as soon as possible to give the user a feedback
+        let event_loop = EventLoop::new();
+        let (mut system_tray, open_item_id, quit_item_id) = create_system_tray(&event_loop)?;
 
-            if updated {
-                // Exit current process as the updater has spawn the
-                // new version in a separate process.
-                // We haven't started the server.js in this instance yet
-                // so it is safe to run the second service by the updater
-                return Ok(());
-            }
+        let current_version = env!("CARGO_PKG_VERSION")
+            .parse()
+            .expect("Should always be valid");
+        let updater = Updater::new(current_version, &self.config);
+        let updated = updater.prompt_and_update().await;
+
+        if updated {
+            // Exit current process as the updater has spawn the
+            // new version in a separate process.
+            // We haven't started the server.js in this instance yet
+            // so it is safe to run the second service by the updater
+            return Ok(());
         }
 
         self.server.start().context("Failed to start server.js")?;
         // cheap to clone and interior mutability
         let mut server = self.server.clone();
-
-        let event_loop = EventLoop::new();
-
-        let (mut system_tray, open_item_id, quit_item_id) = create_system_tray(&event_loop)?;
 
         event_loop.run(move |event, _event_loop, control_flow| {
             *control_flow = ControlFlow::Wait;

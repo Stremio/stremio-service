@@ -30,7 +30,7 @@ pub fn get_current_exe_dir() -> PathBuf {
 
 pub fn create_dir_if_does_not_exists(path: &Path) {
     if !path.exists() {
-        if let Err(e) = std::fs::create_dir_all(path.clone()) {
+        if let Err(e) = std::fs::create_dir_all(path) {
             error!("Failed to create {:?} path: {}", path, e);
         }
     }

@@ -1,4 +1,5 @@
 pub mod app;
+pub mod args;
 pub mod config;
 pub mod server;
 pub mod updater;

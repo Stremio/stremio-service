@@ -115,6 +115,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         std::fs::copy(target_path, bins_path.join(bin[1].clone()))
             .unwrap_or_else(|_| panic!("Failed to copy {} to {}", bin[0], bin[1]));
     }
+    println!("All files copied");
 
     let resources_path = contents_path.join("Resources");
     std::fs::create_dir_all(resources_path.clone()).unwrap_or_else(|_| {
@@ -125,7 +126,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     });
 
     let icon_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(metadata.icon[0].clone());
-    std::fs::copy(icon_path, resources_path.join(metadata.icon[1].clone()))?;
-
+    std::fs::copy(icon_path, resources_path.join(metadata.icon[1].clone())).unwrap_or_else(|_| {
+        panic!(
+            "Failed to copy {} to {}",
+            metadata.icon[0],
+            metadata.icon[1]
+        )
+    });
+    println!("Finished");
     Ok(())
 }

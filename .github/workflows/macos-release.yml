@@ -34,6 +34,7 @@ jobs:
           mv target/macos/$MACOS_APP_NAME.app $MACOS_APP_NAME
           ln -s /Applications $MACOS_APP_NAME/Applications
           rm -rf $MACOS_APP_NAME/.Trashes
+          touch $MACOS_APP_NAME/.Trash
           hdiutil create -size $(du -sm target/macos/$MACOS_APP_NAME.app | cut
 -f1)m target/macos/$MACOS_APP_NAME.dmg -srcfolder $MACOS_APP_NAME -ov
           rm -rf $MACOS_APP_NAME

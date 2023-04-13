@@ -1,5 +1,8 @@
 use std::{error::Error, path::PathBuf};
 
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+use std::os::unix::fs::PermissionsExt;
+
 use serde::Deserialize;
 
 #[derive(Clone, Debug, Deserialize)]
@@ -114,6 +117,13 @@ fn main() -> Result<(), Box<dyn Error>> {
         let target_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(bin[0].clone());
         std::fs::copy(target_path, bins_path.join(bin[1].clone()))
             .unwrap_or_else(|_| panic!("Failed to copy {} to {}", bin[0], bin[1]));
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        // Make the file executable
+        std::fs::set_permissions(
+            bins_path.join(bin[1].clone()),
+            std::fs::Permissions::from_mode(0o755),
+        )
+        .unwrap_or_else(|_| panic!("Failed to set permissions for {}", bin[1]));
     }
     println!("All files copied");
 
@@ -129,8 +139,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     std::fs::copy(icon_path, resources_path.join(metadata.icon[1].clone())).unwrap_or_else(|_| {
         panic!(
             "Failed to copy {} to {}",
-            metadata.icon[0],
-            metadata.icon[1]
+            metadata.icon[0], metadata.icon[1]
         )
     });
     println!("Finished");

@@ -23,20 +23,15 @@ jobs:
         id: set-up-homebrew
         uses: Homebrew/actions/setup-homebrew@master
       - name: Utils
-        run: brew install graphicsmagick imagemagick
+        run: |
+          brew install graphicsmagick imagemagick
+          npm -g install appdmg
       - name: Build
         run: cargo build --release --features=bundled
       - name: Package
         run: |
           cargo run --bin bundle-macos
-          export MACOS_APP_NAME="StremioService"
-          mkdir $MACOS_APP_NAME
-          mv target/macos/$MACOS_APP_NAME.app $MACOS_APP_NAME
-          ln -s /Applications $MACOS_APP_NAME/Applications
-          rm -rf $MACOS_APP_NAME/.Trashes
-          touch $MACOS_APP_NAME/.Trash
-          hdiutil create -size $(du -sm $MACOS_APP_NAME | cut -f1)m target/macos/$MACOS_APP_NAME.dmg -srcfolder $MACOS_APP_NAME -ov
-          rm -rf $MACOS_APP_NAME
+          appdmg ./resources/appdmg.json "target/macos/StremioService.dmg"
       - name: Upload to Amazon S3
         run: |
           aws s3 cp --acl public-read target/macos/StremioService.dmg s3://stremio-artifacts/stremio-service/${{ github.ref_name }}/

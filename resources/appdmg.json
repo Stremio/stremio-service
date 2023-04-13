@@ -1,0 +1,11 @@
+{
+    "title": "StremioService",
+    "icon": "service.icns",
+    "background": "osx-inst.png",
+    "contents": [
+      { "x": 142, "y": 212, "type": "file", "path": "../target/macos/StremioService.app" },
+      { "x": 384, "y": 212, "type": "link", "path": "/Applications" }
+    ]
+  }
+  
+  

@@ -32,6 +32,13 @@ jobs:
         run: |
           cargo run --bin bundle-macos
           appdmg ./resources/appdmg.json "target/macos/StremioService.dmg"
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-region: eu-west-1
+
       - name: Upload to Amazon S3
         run: |
           aws s3 cp --acl public-read target/macos/StremioService.dmg s3://stremio-artifacts/stremio-service/${{ github.ref_name }}/

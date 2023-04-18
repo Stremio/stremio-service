@@ -169,7 +169,7 @@ impl Updater {
 
     pub fn run_updater_setup(&self, file_path: PathBuf) {
         // TODO: Handle the macOS dmg installer
-        let mut command = Command::new(&file_path);
+        let mut command = Command::new(file_path);
         command.arg("/VERYSILENT");
 
         match command.spawn() {

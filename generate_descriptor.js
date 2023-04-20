@@ -132,7 +132,7 @@ function log(...params) {
 
 const s3Cmd = (command_line) => {
     return new Promise((resolve, reject) => {
-        exec(`s3cmd ${command_line}`, (err, stdout, stderr) => {
+        exec(`aws s3 ${command_line}`, (err, stdout, stderr) => {
             const error = err || (stderr && new Error(stderr));
             if (error) return reject(error);
             resolve(stdout);
@@ -140,9 +140,8 @@ const s3Cmd = (command_line) => {
     });
 };
 
-const s3Ls = (path) => s3Cmd(`ls ${path}`);
-const s3Cp = (src, dest) => s3Cmd(`cp ${src} ${dest}`);
-const s3Upload = (src, dest) => s3Cmd(`put --acl-public ${src} ${dest}`);
+const s3Ls = (path) => s3Cmd(`ls --no-paginate ${path}`).catch(() => {});
+const s3Cp = (src, dest) => s3Cmd(`cp --acl public-read ${src} ${dest}`);
 
 // Downloads a file from S3 and returns a hash of it
 const s3Hash = (path) => {
@@ -160,17 +159,19 @@ const s3Hash = (path) => {
 };
 
 // Parses a line from the S3 listing
-const parseS3Listing = (line) => {
+const parseS3Listing = (tag) => (line) => {
     const path = (
         line.match(
-            /^\s*(?<date>\d{4}(?:-\d{2}){2} \d\d?:\d\d?)\s+\d+\s+(?<path>.*)\s*$/
+            /^\s*(?<date>\d{4}(?:-\d{2}){2} \d\d(?::\d\d){2})\s+\d+\s+(?<name>.*)\s*$/
         ) || {}
     ).groups;
     if (!path) return;
+    const os = OS_EXT[posix.extname(path.name)];
+    if (!os) return;
     return {
-        name: posix.basename(path.path),
-        url: S3_HTTP_ENDPOINT + path.path.replace(/^s3:\//, ""),
-        os: OS_EXT[posix.extname(path.path)] || "linux",
+        name: path.name,
+        url: `${S3_HTTP_ENDPOINT + S3_BUCKET_PATH.slice(4) + tag}/${path.name}`,
+        os,
         date: new Date(path.date),
     };
 };
@@ -179,7 +180,7 @@ const getFilesForTag = async (tag) =>
     (
         await s3Ls(S3_BUCKET_PATH + tag + "/").then((listing) => {
             log("Calculating hashes for files");
-            return listing.split("\n").map(parseS3Listing);
+            return listing.split("\n").map(parseS3Listing(tag));
         })
     ).filter((file) => file);
 
@@ -217,10 +218,10 @@ const generateDescriptor = async (args) => {
     let tag = args.tag;
     if (!tag) {
         log("Obtaining the latest tag");
-        tag = await s3Ls(S3_BUCKET_PATH + "v*").then((listing) => {
+        tag = await s3Ls(S3_BUCKET_PATH).then((listing) => {
             // get the first line, remove the DIR prefix, and get the basename
             // which is the tag
-            const first_path = listing.split("\n")[0].replace(/^\s+DIR\s+/, "");
+            const first_path = listing.replace(/^\s+\w+\s+/gm, '').split('\n').find(line => line.match(VERSION_REGEX));
             return posix.basename(first_path);
         });
     }
@@ -229,8 +230,7 @@ const generateDescriptor = async (args) => {
     const s3_dest_path = args.release
         ? S3_VERSIONS_PATH + desc_name
         : s3_rc_desc_path;
-    const desc_exists = await s3Ls(s3_dest_path).then((listing) => !!listing);
-    if (!args.force && desc_exists) {
+    if (!args.force && await s3Ls(s3_dest_path).then((listing) => !!listing)) {
         throw new Error(
             `${args.release ? "" : "RC "}Descriptor for tag ${tag} already exists`
         );
@@ -283,7 +283,7 @@ const generateDescriptor = async (args) => {
 
     log(`Uploading ${args.release ? "" : "RC "}descriptor to S3`);
     try {
-        await s3Upload(descriptor_path, s3_dest_path);
+        await s3Cp(descriptor_path, s3_dest_path);
     } finally {
         // Clean up the temporary file even if the upload fails
         log("Cleaning up");

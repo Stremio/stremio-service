@@ -38,6 +38,10 @@ jobs:
         run: |
           aws s3 cp --acl public-read StremioServiceSetup.exe s3://stremio-artifacts/stremio-service/${{ github.ref_name }}/
 
+      - name: Generate RC descriptor
+        run: |
+          node ./generate_descriptor.js --wait-all --tag=${{ github.ref_name }}
+
       - name: Upload windows release
         uses: svenstaro/upload-release-action@v1-release
         with:

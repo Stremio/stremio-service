@@ -259,7 +259,7 @@ const generateDescriptor = async (args) => {
     if (!file_listing.length) throw new Error("No files found");
     if (args.wait_all && file_listing.length < Object.keys(OS_EXT).length) {
         log(
-            `Not all files are uploaded yet. Rerund this script after ${Object.keys(OS_EXT).length - file_listing.length
+            `Not all files are uploaded yet. Rerun this script after ${Object.keys(OS_EXT).length - file_listing.length
             } more are uploaded`
         );
         return;

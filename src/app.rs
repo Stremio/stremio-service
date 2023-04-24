@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Context, Error};
-use rand::Rng;
 use fslock::LockFile;
 use log::{error, info};
+use rand::Rng;
 use rust_embed::RustEmbed;
 #[cfg(feature = "bundled")]
 use std::path::Path;

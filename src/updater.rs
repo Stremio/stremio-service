@@ -168,16 +168,37 @@ impl Updater {
     }
 
     pub fn run_updater_setup(&self, file_path: PathBuf) {
-        // TODO: Handle the macOS dmg installer
-        let mut command = Command::new(file_path);
-        command.arg("/VERYSILENT");
+        match std::env::consts::OS {
+            "windows" => {
+                let mut command = Command::new(file_path);
+                command.arg("/VERYSILENT");
 
-        match command.spawn() {
-            Ok(process) => {
-                let process_pid = process.id();
-                info!("Updater started. (PID {:?})", process_pid);
+                match command.spawn() {
+                    Ok(process) => info!("Updater started. (PID {:?})", process.id()),
+                    Err(err) => error!("Updater couldn't be started: {err}"),
+                };
             }
-            Err(err) => error!("Updater couldn't be started: {err}"),
+            "macos" => {
+                let mut command = Command::new("/bin/sh");
+                command.args(["-c", format!("DMG=\"{}\" && NEW=/Applications/$(date +%s).app && MNT=\"/Volumes/StremioService$(date +%s)\" && hdiutil attach \"$DMG\" -nobrowse -noautoopen && cp -R \"$MNT\"/*.app \"$NEW\" && rm -rf /Applications/StremioService.app && mv \"$NEW\" \"/Applications/StremioService.app\" && xattr -d com.apple.quarantine /Applications/StremioService.app; hdiutil detach \"$MNT\"", file_path.display()).as_str()]);
+                match command.status() {
+                    Ok(status) => {
+                        if status.success() {
+                            info!("Updater finished. Running updated app...");
+                            let mut command = Command::new("/bin/sh");
+                            command.args(["-c", "sleep 5; open -n /Applications/Stremio.app"]);
+                            match command.spawn() {
+                                Ok(_) => info!("Updated app started."),
+                                Err(err) => error!("Updated app couldn't be started: {err}"),
+                            };
+                        } else {
+                            error!("Updater errored with status: {status}");
+                        }
+                    }
+                    Err(err) => error!("Updater couldn't be started: {err}"),
+                }
+            }
+            _ => error!("Updates aren't supported on: {}", std::env::consts::OS),
         }
     }
 }

@@ -63,6 +63,7 @@ futures-util = "0.3.28"
 serde_json = "1"
 sha2 = "0.10"
 hex = "0.4"
+rand = "0.8"
 
 urlencoding = "2.1.2"
 zip-extract = "0.1.1"

@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context, Error};
+use rand::Rng;
 use fslock::LockFile;
 use log::{error, info};
 use rust_embed::RustEmbed;
@@ -75,7 +76,7 @@ impl Config {
         let lockfile = data_dir.join("lock");
         let updater_endpoint = args
             .updater_endpoint
-            .unwrap_or_else(|| UPDATE_ENDPOINT.to_string());
+            .unwrap_or_else(|| Self::get_random_updater_endpoint());
 
         Ok(Self {
             updater_endpoint,
@@ -85,6 +86,11 @@ impl Config {
             server,
             force_update: args.force_update,
         })
+    }
+    fn get_random_updater_endpoint() -> String {
+        let mut rng = rand::thread_rng();
+        let index = rng.gen_range(0..UPDATE_ENDPOINT.len());
+        UPDATE_ENDPOINT[index].to_string()
     }
 }
 

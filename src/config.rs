@@ -8,4 +8,8 @@ pub const DESKTOP_FILE_NAME: &str = "com.stremio.service.desktop";
 pub const AUTOSTART_CONFIG_PATH: &str = ".config/autostart";
 pub const LAUNCH_AGENTS_PATH: &str = "Library/LaunchAgents";
 
-pub const UPDATE_ENDPOINT: &str = "http://localhost:3000/updater/check?product=stremio-service";
+pub const UPDATE_ENDPOINT: [&'static str; 3] = [
+    "https://www.strem.io/updater/check?product=stremio-service",
+    "https://www.stremio.com/updater/check?product=stremio-service",
+    "https://www.stremio.net/updater/check?product=stremio-service",
+];

@@ -2,7 +2,7 @@
 
 // This script generates an auto update descriptor for a given tag.
 // It will get the files for the tag, calculate their hashes, and upload
-// the descriptor to S3. In order to run it, you need to have s3cmd installed
+// the descriptor to S3. In order to run it, you need to have aws cli installed
 // and configured with your AWS credentials.
 
 const { exec } = require("child_process");

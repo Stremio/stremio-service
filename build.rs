@@ -1,7 +1,9 @@
-use std::{error::Error, fs, io::Cursor, path::Path};
+use std::{error::Error, fs, io::Cursor};
 
 use bytes::Bytes;
 use flate2::bufread::GzDecoder;
+#[cfg(any(target_os = "linux", target_os = "windows"))]
+use std::path::Path;
 #[cfg(target_os = "windows")]
 use std::path::PathBuf;
 #[cfg(target_os = "linux")]

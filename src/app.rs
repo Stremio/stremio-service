@@ -76,7 +76,7 @@ impl Config {
         let lockfile = data_dir.join("lock");
         let updater_endpoint = args
             .updater_endpoint
-            .unwrap_or_else(|| Self::get_random_updater_endpoint());
+            .unwrap_or_else(Self::get_random_updater_endpoint);
 
         Ok(Self {
             updater_endpoint,

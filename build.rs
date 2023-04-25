@@ -2,10 +2,8 @@ use std::{error::Error, fs, io::Cursor};
 
 use bytes::Bytes;
 use flate2::bufread::GzDecoder;
-#[cfg(any(target_os = "linux", target_os = "windows"))]
+#[cfg(any(target_os = "linux"))]
 use std::path::Path;
-#[cfg(target_os = "windows")]
-use std::path::PathBuf;
 #[cfg(target_os = "linux")]
 use tar::Archive;
 use xz::bufread::XzDecoder;
@@ -14,8 +12,6 @@ use xz::bufread::XzDecoder;
 use chrono::{Datelike, Local};
 
 const STREMIO_SERVER: &str = "https://dl.strem.io/four/master/server.js";
-#[cfg(target_os = "windows")]
-const NODE_WINDOWS_ARCHIVE: &str = "https://nodejs.org/dist/v18.12.1/node-v18.12.1-win-x64.zip";
 #[cfg(target_os = "linux")]
 const NODE_LINUX_ARCHIVE: &str = "https://nodejs.org/dist/v18.12.1/node-v18.12.1-linux-x64.tar.xz";
 
@@ -48,14 +44,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         fs::write(resource_bin_dir.join("server.js"), server_js_file)?;
     }
 
-    #[cfg(target_os = "windows")]
-    {
-        let node_executable = "node.exe";
-        if !resource_bin_dir.join(node_executable).exists() {
-            extract_zip(NODE_WINDOWS_ARCHIVE, node_executable, &resource_bin_dir)?;
-        }
-    }
-
     #[cfg(target_os = "linux")]
     {
         extract_tar::<XzDecoder<Cursor<Bytes>>>(
@@ -78,22 +66,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         res.set("LegalCopyright", &copyright);
         res.set_icon_with_id("resources/service.ico", "ICON");
         res.compile().unwrap();
-    }
-
-    Ok(())
-}
-
-#[cfg(target_os = "windows")]
-fn extract_zip(url: &str, file_name: &str, out: &Path) -> Result<(), Box<dyn Error>> {
-    let target = out.join(file_name);
-    if !target.exists() {
-        let tmp_dir = PathBuf::from(".tmp");
-        fs::create_dir_all(tmp_dir.clone())?;
-
-        let archive_file = reqwest::blocking::get(url)?.bytes()?;
-        zip_extract::extract(Cursor::new(archive_file), &tmp_dir, true)?;
-        fs::copy(tmp_dir.join(file_name), target)?;
-        fs::remove_dir_all(tmp_dir)?;
     }
 
     Ok(())

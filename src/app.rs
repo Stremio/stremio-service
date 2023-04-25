@@ -2,6 +2,7 @@ use anyhow::{anyhow, Context, Error};
 use fslock::LockFile;
 use log::{error, info};
 use rand::Rng;
+use reqwest::Url;
 use rust_embed::RustEmbed;
 #[cfg(feature = "bundled")]
 use std::path::Path;
@@ -74,9 +75,17 @@ impl Config {
 
         let data_dir = home_dir.join(DATA_DIR);
         let lockfile = data_dir.join("lock");
-        let updater_endpoint = args
-            .updater_endpoint
-            .unwrap_or_else(Self::get_random_updater_endpoint);
+
+        let updater_endpoint = if let Some(endpoint) = args.updater_endpoint.as_ref() {
+            endpoint.to_string()
+        } else {
+            let mut url = Url::parse(Self::get_random_updater_endpoint().as_str())
+                .expect("Some of the internal updater endpoints are invalid");
+            if args.release_candidate {
+                url.query_pairs_mut().append_pair("rc", "true");
+            }
+            url.to_string()
+        };
 
         Ok(Self {
             updater_endpoint,

@@ -21,6 +21,12 @@ pub struct Args {
     #[clap(short, long)]
     pub updater_endpoint: Option<String>,
 
+    /// Updates the app to the latest release candidate
+    ///
+    /// This option is ignored when `--updater-endpoint` is set
+    #[clap(short, long)]
+    pub release_candidate: bool,
+
     /// Open an URL with a custom `stremio://` scheme.
     ///
     /// If empty URL or no url is provided, the service will skip this argument.

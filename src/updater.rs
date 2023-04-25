@@ -79,7 +79,7 @@ impl Updater {
         false
     }
 
-    async fn check_for_update(&self, force: bool) -> Result<(FileItem, Version), anyhow::Error> {
+    async fn check_for_update(&self) -> Result<(FileItem, Version), anyhow::Error> {
         let update_response = reqwest::get(self.endpoint.clone())
             .await?
             .json::<UpdateResponse>()
@@ -98,7 +98,7 @@ impl Updater {
             .find(|file_item| file_item.os == std::env::consts::OS)
             .expect("No update for this OS");
         let version = Version::parse(update_descriptor.version.as_str())?;
-        if !force && !self.next_version.matches(&version) {
+        if !self.force_update && !self.next_version.matches(&version) {
             return Err(anyhow!(
                 "No new releases found that match the requirement of `{}`",
                 self.next_version
@@ -156,7 +156,7 @@ impl Updater {
 
     /// Fetches the latest update from the update server.
     pub async fn autoupdate(&self) -> Result<Option<Update>, anyhow::Error> {
-        let (installer, version) = self.check_for_update(self.force_update).await?;
+        let (installer, version) = self.check_for_update().await?;
         let dest = self
             .download_and_verify_installer(installer.url, &installer.checksum)
             .await?;

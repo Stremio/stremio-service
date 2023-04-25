@@ -80,6 +80,7 @@ impl Updater {
     }
 
     async fn check_for_update(&self) -> Result<(FileItem, Version), anyhow::Error> {
+        info!("Using updater endpoint {}", &self.endpoint);
         let update_response = reqwest::get(self.endpoint.clone())
             .await?
             .json::<UpdateResponse>()

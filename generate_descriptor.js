@@ -98,7 +98,7 @@ const parseArguments = () => {
         return acc;
     }, {});
     try {
-        for (let i = 2;i < process.argv.length;i++) {
+        for (let i = 2; i < process.argv.length; i++) {
             const arg = process.argv[i];
             if (arg.startsWith("--")) {
                 // Stop processing arguments after --
@@ -140,7 +140,7 @@ const s3Cmd = (command_line) => {
     });
 };
 
-const s3Ls = (path) => s3Cmd(`ls --no-paginate ${path}`).catch(() => {});
+const s3Ls = (path) => s3Cmd(`ls --no-paginate ${path}`).catch(() => { });
 const s3Cp = (src, dest) => s3Cmd(`cp --acl public-read ${src} ${dest}`);
 
 // Downloads a file from S3 and returns a hash of it
@@ -180,7 +180,7 @@ const getFilesForTag = async (tag) =>
     (
         await s3Ls(S3_BUCKET_PATH + tag + "/").then((listing) => {
             log("Calculating hashes for files");
-            return listing.split("\n").map(parseS3Listing(tag));
+            return (listing || "").split("\n").map(parseS3Listing(tag));
         })
     ).filter((file) => file);
 

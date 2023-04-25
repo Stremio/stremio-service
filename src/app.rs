@@ -59,6 +59,7 @@ pub struct Config {
     /// The server.js configuration
     server: server::Config,
     pub updater_endpoint: String,
+    pub skip_update: bool,
     pub force_update: bool,
 }
 
@@ -93,6 +94,7 @@ impl Config {
             data_dir,
             lockfile,
             server,
+            skip_update: args.skip_updater,
             force_update: args.force_update,
         })
     }

@@ -20,6 +20,7 @@ pub struct Updater {
     pub current_version: Version,
     pub next_version: VersionReq,
     pub endpoint: String,
+    pub skip_update: bool,
     pub force_update: bool,
 }
 
@@ -54,12 +55,18 @@ impl Updater {
                 .expect("Version is type-safe"),
             current_version,
             endpoint: config.updater_endpoint.clone(),
+            skip_update: config.skip_update,
             force_update: config.force_update,
         }
     }
 
     /// Updates the service only for non-linux OS and returns whether an update was made.
     pub async fn prompt_and_update(&self) -> bool {
+        if self.skip_update {
+            info!("Skipping update check");
+            return false;
+        }
+
         #[cfg(not(target_os = "linux"))]
         {
             info!("Fetching updates for >v{}", self.current_version);

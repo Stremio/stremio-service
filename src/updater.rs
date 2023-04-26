@@ -179,7 +179,12 @@ impl Updater {
         match std::env::consts::OS {
             "windows" => {
                 let mut command = Command::new(file_path);
-                command.arg("/VERYSILENT");
+                command.args([
+                    "/SILENT",
+                    "/NOCANCEL",
+                    "/FORCECLOSEAPPLICATIONS",
+                    "/TASKS=runapp",
+                ]);
 
                 match command.spawn() {
                     Ok(process) => info!("Updater started. (PID {:?})", process.id()),

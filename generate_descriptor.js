@@ -15,7 +15,7 @@ const S3_BUCKET_PATH = "s3://stremio-artifacts/stremio-service/";
 const S3_VERSIONS_PATH = "s3://stremio-artifacts/stremio-service/[versions]/";
 const S3_VERSIONS_RC_PATH =
     "s3://stremio-artifacts/stremio-service/[versions]/rc/";
-const S3_HTTP_ENDPOINT = "https://s3-eu-west-1.amazonaws.com";
+const DOWNLOAD_ENDPOINT = "https://dl.strem.io/stremio-service/";
 const OS_EXT = {
     ".exe": "windows",
     ".dmg": "macos",
@@ -170,7 +170,7 @@ const parseS3Listing = (tag) => (line) => {
     if (!os) return;
     return {
         name: path.name,
-        url: `${S3_HTTP_ENDPOINT + S3_BUCKET_PATH.slice(4) + tag}/${path.name}`,
+        url: `${DOWNLOAD_ENDPOINT + tag}/${path.name}`,
         os,
         date: new Date(path.date),
     };

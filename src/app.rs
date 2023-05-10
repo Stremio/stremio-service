@@ -2,7 +2,6 @@ use anyhow::{anyhow, Context, Error};
 use fslock::LockFile;
 use log::{error, info};
 use rand::Rng;
-use reqwest::Url;
 use rust_embed::RustEmbed;
 #[cfg(all(feature = "bundled", any(target_os = "linux", target_os = "macos")))]
 use std::path::Path;
@@ -14,6 +13,7 @@ use tao::{
     system_tray::{SystemTray, SystemTrayBuilder},
     TrayId,
 };
+use url::Url;
 
 use crate::{
     args::Args,

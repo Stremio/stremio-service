@@ -12,9 +12,9 @@ jobs:
       APP_IDENTITY: "84be7f558e00419c800f516afdbd44e1"
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Rust setup
-        uses: actions-rs/toolchain@v1
+        uses: actions-rs/toolchain@v1.0.6
         with:
           toolchain: stable
       - name: Node setup
@@ -95,7 +95,7 @@ jobs:
           overwrite: true
           file_glob: true
       - name: Zip release for macos
-        uses: vimtor/action-zip@v1
+        uses: vimtor/action-zip@v1.1
         with:
           # todo: add license
           files: resources/bin/ffmpeg-macos resources/bin/ffprobe-macos resources/bin/node target/release/stremio-service resources/bin/server.js

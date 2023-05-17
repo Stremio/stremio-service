@@ -104,8 +104,20 @@ impl Config {
     /// If any other OS is supplied, see [`std::env::consts::OS`] for more details.
     pub fn ffmpeg_bin(operating_system: Option<&str>) -> Result<&'static str, Error> {
         match operating_system.unwrap_or(std::env::consts::OS) {
-            "linux" => Ok("ffmpeg"),
-            "macos" => Ok("ffmpeg"),
+            "linux" => {
+                if cfg!(feature = "bundled") {
+                    Ok("ffmpeg")
+                } else {
+                    Ok("ffmpeg-linux")
+                }
+            }
+            "macos" => {
+                if cfg!(feature = "bundled") {
+                    Ok("ffmpeg")
+                } else {
+                    Ok("ffmpeg-macos")
+                }
+            }
             "windows" => Ok("ffmpeg-windows.exe"),
             os => bail!("Operating system {} is not supported", os),
         }

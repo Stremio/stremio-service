@@ -51,14 +51,14 @@ jobs:
           ditto -c -k --sequesterRsrc --keepParent target/macos/StremioService.app target/macos/StremioService.app.zip
       - name: Notarize app
         env:
-          NOTARIZATION_PWD: ${{ secrets.NOTARIZATION_PWD }}
-          TEAM_ID: ${{ secrets.TEAM_ID }}
+          NOTARIZATION_PWD: ${{ secrets.APPLE_DEVACCOUNT_NOTARIZATION_APP_SPECIFIC_PWD }}
+          TEAM_ID: ${{ secrets.APPLE_DEVELOPER_TEAM_ID }}
         run: |
           REQUEST=$(xcrun altool --notarize-app -t osx -f "$ZIP_PATH" --primary-bundle-id com.smartcodeltd.stremio -u "ivo@linvo.com" -p "$NOTARIZATION_PWD" --asc-provider "$TEAM_ID" | awk '/RequestUUID =/ { print $3 }')
           echo Got request ID: $REQUEST
           sleep 480
           echo Check the notarization status...
-          xcrun altool --notarization-info "$REQUEST" -u "$USER" -p "$PASS"
+          xcrun altool --notarization-info "$REQUEST" -u "ivo@linvo.com" -p "$NOTARIZATION_PWD"
           echo Stapling the app...
           xcrun stapler staple "target/macos/StremioService.app"
 

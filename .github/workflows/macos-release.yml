@@ -8,6 +8,8 @@ on:
 jobs:
   macos-release:
     runs-on: macos-latest
+    env:
+      APP_IDENTITY: "84be7f558e00419c800f516afdbd44e1"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -28,10 +30,46 @@ jobs:
           npm -g install appdmg
       - name: Build
         run: cargo build --release --features=bundled
-      - name: Package
+      - name: Bundle
         run: |
           cargo run --bin bundle-macos
+      - name: Setup keychain
+        run: |
+          security create-keychain -p stremioservice build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p stremioservice build.keychain
+          security set-keychain-settings -t 3600 -u build.keychain
+          security import ./resources/certificates/developer_id_Installer.p12 -k build.keychain -T /usr/bin/codesign
+          security import ./resources/certificates/developer_id_app.p12 -k build.keychain -P ${{ secrets.APPLE_CERTIFICATE_PASSWORD }} -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k stremioservice build.keychain
+          security find-identity -v
+      - name: Sign app
+        run: |
+          codesign --deep --force --verbose --sign "$APP_IDENTITY" --entitlements ./resources/entitlements.plist --options runtime target/macos/StremioService.app
+      - name: Compress app
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent target/macos/StremioService.app target/macos/StremioService.app.zip
+      - name: Notarize app
+        env:
+          NOTARIZATION_PWD: ${{ secrets.NOTARIZATION_PWD }}
+          TEAM_ID: ${{ secrets.TEAM_ID }}
+        run: |
+          REQUEST=$(xcrun altool --notarize-app -t osx -f "$ZIP_PATH" --primary-bundle-id com.smartcodeltd.stremio -u "ivo@linvo.com" -p "$NOTARIZATION_PWD" --asc-provider "$TEAM_ID" | awk '/RequestUUID =/ { print $3 }')
+          echo Got request ID: $REQUEST
+          sleep 480
+          echo Check the notarization status...
+          xcrun altool --notarization-info "$REQUEST" -u "$USER" -p "$PASS"
+          echo Stapling the app...
+          xcrun stapler staple "target/macos/StremioService.app"
+
+      - name: Package
+        run: |
           appdmg ./resources/appdmg.json "target/macos/StremioService.dmg"
+      
+      - name: Sign DMG
+        run: |
+          codesign --deep --force --verbose --sign "$APP_IDENTITY" target/macos/StremioService.dmg
+  
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:

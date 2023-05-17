@@ -27,6 +27,10 @@ jobs:
         run: |
           & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' 'setup\StremioService.iss'
 
+      - name: Sign Installer
+        run: |
+          SignTool.exe sign /f "resources\certificates\smartcode-20211118-20241118.pfx" /p ${{ secrets.WIN_CERT_PASSWORD }} /v "StremioServiceSetup.exe"
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:

@@ -1,11 +1,12 @@
+use std::{io::Write, path::PathBuf, process::Command};
+
 use anyhow::anyhow;
 use log::{error, info};
-use reqwest::Url;
 use semver::{Version, VersionReq};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
-use std::{io::Write, path::PathBuf, process::Command};
 use tokio::io::AsyncWriteExt;
+use url::Url;
 
 use crate::app::Config;
 

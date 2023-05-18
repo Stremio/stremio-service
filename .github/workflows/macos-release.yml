@@ -9,7 +9,7 @@ jobs:
   macos-release:
     runs-on: macos-latest
     env:
-      APP_IDENTITY: "84be7f558e00419c800f516afdbd44e1"
+      APP_IDENTITY: "FA18F75D76A5D513F8465C671CD0FE2F7F9AA848"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3

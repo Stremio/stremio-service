@@ -1,4 +1,5 @@
 use clap::Parser;
+use url::Url;
 
 #[derive(Parser, Debug, Clone)]
 #[command(author, version, about, long_about = None)]
@@ -23,7 +24,7 @@ pub struct Args {
     /// Overrides the default endpoint
     #[clap(short, long)]
     #[arg(group = "endpoint")]
-    pub updater_endpoint: Option<String>,
+    pub updater_endpoint: Option<Url>,
 
     /// Updates the app to the latest release candidate
     ///

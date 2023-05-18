@@ -1,6 +1,6 @@
 use std::{io::Write, path::PathBuf, process::Command};
 
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use log::{error, info};
 use semver::{Version, VersionReq};
 use serde::Deserialize;
@@ -20,7 +20,7 @@ pub struct Update {
 pub struct Updater {
     pub current_version: Version,
     pub next_version: VersionReq,
-    pub endpoint: String,
+    pub endpoint: Url,
     pub skip_update: bool,
     pub force_update: bool,
 }
@@ -128,9 +128,9 @@ impl Updater {
         let temp_dir = std::env::temp_dir();
         let file_name = std::path::Path::new(url.path())
             .file_name()
-            .expect("Invalid file name")
+            .context("Invalid file name")?
             .to_str()
-            .expect("The path is not valid UTF-8")
+            .context("The path is not valid UTF-8")?
             .to_string();
         let dest = temp_dir.join(&file_name);
 

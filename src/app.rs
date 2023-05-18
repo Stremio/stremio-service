@@ -58,7 +58,7 @@ pub struct Config {
 
     /// The server.js configuration
     server: server::Config,
-    pub updater_endpoint: String,
+    pub updater_endpoint: Url,
     pub skip_update: bool,
     pub force_update: bool,
 }
@@ -77,15 +77,14 @@ impl Config {
         let data_dir = home_dir.join(DATA_DIR);
         let lockfile = data_dir.join("lock");
 
-        let updater_endpoint = if let Some(endpoint) = args.updater_endpoint.as_ref() {
-            endpoint.to_string()
+        let updater_endpoint = if let Some(endpoint) = args.updater_endpoint {
+            endpoint
         } else {
-            let mut url = Url::parse(Self::get_random_updater_endpoint().as_str())
-                .expect("Some of the internal updater endpoints are invalid");
+            let mut url = Url::parse(Self::get_random_updater_endpoint().as_str())?;
             if args.release_candidate {
                 url.query_pairs_mut().append_pair("rc", "true");
             }
-            url.to_string()
+            url
         };
 
         Ok(Self {

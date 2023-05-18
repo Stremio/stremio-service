@@ -1,5 +1,5 @@
 #![cfg_attr(
-    all(target_os = "windows", not(debug_assertions),),
+    all(target_os = "windows", feature = "bundled",),
     windows_subsystem = "windows"
 )]
 use anyhow::Context;

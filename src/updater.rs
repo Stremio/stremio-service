@@ -90,13 +90,13 @@ impl Updater {
     async fn check_for_update(&self) -> Result<(FileItem, Version), anyhow::Error> {
         info!("Using updater endpoint {}", &self.endpoint);
         let update_response = reqwest::get(self.endpoint.clone())
-            .await?
+            .await.context("Cannot fetch response from the updater endpoint")?
             .json::<UpdateResponse>()
-            .await?;
+            .await.context("Invalid response from the updater endpoint")?;
         let update_descriptor = reqwest::get(update_response.version_desc)
-            .await?
+            .await.context("Cannot fetch the update descriptor")?
             .json::<Descriptor>()
-            .await?;
+            .await.context("Invalid update descriptor")?;
 
         if update_response.version != update_descriptor.version {
             return Err(anyhow!("Missmatched update versions"));
@@ -105,7 +105,7 @@ impl Updater {
             .files
             .iter()
             .find(|file_item| file_item.os == std::env::consts::OS)
-            .expect("No update for this OS");
+            .context("No update for this OS")?;
         let version = Version::parse(update_descriptor.version.as_str())?;
         if !self.force_update && !self.next_version.matches(&version) {
             return Err(anyhow!(

@@ -33,11 +33,16 @@ pub struct Config {
     node: PathBuf,
     /// ffmpeg binary path
     ///
-    /// Includes the OS-dependent suffix:
-    /// - `linux` - `ffmpeg-linux`
-    /// - `macos` - `ffmpeg-macos`
+    /// - `linux` - `ffmpeg-linux` or `ffmpeg` (when `bundled` feature is enabled)
+    /// - `macos` - `ffmpeg-macos` or `ffmpeg` (when `bundled` feature is enabled)
     /// - `windows` - `ffmpeg-windows.exe`
     ffmpeg: PathBuf,
+    /// ffprobe binary path
+    /// 
+    ///     /// - `linux` - `ffprobe-linux64` or `ffprobe` (when `bundled` feature is enabled)
+    /// - `macos` - `ffprobe-macos` or `ffprobe` (when `bundled` feature is enabled)
+    /// - `windows` - `ffprobe-windows.exe`
+    ffprobe: PathBuf,
     /// server.js binary path
     server: PathBuf,
 }
@@ -58,29 +63,46 @@ impl Config {
         if directory.is_dir() {
             let node = directory.join(Self::node_bin(None)?);
             let ffmpeg = directory.join(Self::ffmpeg_bin(None)?);
+            let ffprobe = directory.join(Self::ffprobe_bin(None)?);
             let server = directory.join("server.js");
 
             match (
                 node.try_exists().context("Nodejs")?,
                 ffmpeg.try_exists().context("ffmpeg")?,
+                ffprobe.try_exists().context("ffprobe")?,
                 server.try_exists().context("server.js")?,
             ) {
-                (false, true, true) => bail!("Nodejs not found at: {}", node.display().to_string()),
-                (true, false, true) => {
+                (true, true, true, true) => Ok(Self {
+                    node,
+                    ffmpeg,
+                    ffprobe,
+                    server,
+                }),
+                (false, true, true, true) => {
+                    bail!("Nodejs not found at: {}", node.display().to_string())
+                }
+                (true, false, true, true) => {
                     bail!("ffmpeg not found at: {}", ffmpeg.display().to_string())
                 }
-                (true, true, false) => {
+                (true, true, false, true) => {
+                    bail!("ffprobe not found at: {}", server.display().to_string())
+                }
+                (true, true, true, false) => {
                     bail!("server.js not found at: {}", server.display().to_string())
                 }
-                (false, false, false) => bail!(
+                (false, false, false, false) => bail!(
                     "Nodejs, ffmpeg and server.js not found in directory: {}",
                     directory.display().to_string()
                 ),
-                _ => Ok(Self {
-                    node,
-                    ffmpeg,
-                    server,
-                }),
+                _ => {
+                    bail!(
+                        "More than 1 required binary was not found; paths: {}; {}; {}; {}",
+                        node.display().to_string(),
+                        ffmpeg.display().to_string(),
+                        ffprobe.display().to_string(),
+                        server.display().to_string(),
+                    )
+                }
             }
         } else {
             bail!(
@@ -93,8 +115,8 @@ impl Config {
     /// Returns the ffmpeg binary name (Operating system dependent).
     ///
     /// Supports only 3 OSes:
-    /// - `linux` - returns `ffmpeg-linux`
-    /// - `macos` returns `ffmpeg-macos`
+    /// - `linux` - returns `ffmpeg-linux` or `ffmpeg` (when `bundled` feature is enabled)
+    /// - `macos` returns `ffmpeg-macos` or `ffmpeg` (when `bundled` feature is enabled)
     /// - `windows` returns `ffmpeg-windows.exe`
     ///
     /// If no OS is supplied, [`std::env::consts::OS`] is used.
@@ -119,6 +141,27 @@ impl Config {
                 }
             }
             "windows" => Ok("ffmpeg-windows.exe"),
+            os => bail!("Operating system {} is not supported", os),
+        }
+    }
+
+    pub fn ffprobe_bin(operating_system: Option<&str>) -> Result<&'static str, Error> {
+        match operating_system.unwrap_or(std::env::consts::OS) {
+            "linux" => {
+                if cfg!(feature = "bundled") {
+                    Ok("ffprobe")
+                } else {
+                    Ok("ffprobe-linux64")
+                }
+            }
+            "macos" => {
+                if cfg!(feature = "bundled") {
+                    Ok("ffprobe")
+                } else {
+                    Ok("ffprobe-macos")
+                }
+            }
+            "windows" => Ok("ffprobe-windows.exe"),
             os => bail!("Operating system {} is not supported", os),
         }
     }
@@ -160,6 +203,8 @@ impl Server {
         #[cfg(target_os = "windows")]
         command.creation_flags(CREATE_NO_WINDOW);
         command.env("FFMPEG_BIN", &self.inner.config.ffmpeg);
+        dbg!(&self.inner.config.ffprobe);
+        command.env("FFPROBE_BIN", &self.inner.config.ffprobe);
         command.arg(&self.inner.config.server);
 
         if self

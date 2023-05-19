@@ -100,6 +100,7 @@ assets = [
     ["resources/bin/node", "/usr/bin/stremio-service/node", "755"],
     ["resources/bin/server.js", "/usr/bin/stremio-service/server.js", "755"],
     ["resources/bin/ffmpeg-linux", "/usr/bin/stremio-service/ffmpeg", "755"],
+    ["resources/bin/ffprobe-linux", "/usr/bin/stremio-service/ffprobe", "755"],
     ["resources/com.stremio.service.desktop", "/usr/share/applications/com.stremio.service.desktop", "644"],
     ["resources/com.stremio.service.svg", "/usr/share/icons/hicolor/scalable/apps/com.stremio.service.svg", "644"],
 ]
@@ -111,6 +112,7 @@ assets = [
     { source = "target/release/stremio-service", dest = "/usr/bin/stremio-service/stremio-service", mode = "755" },
     { source = "resources/bin/node", dest = "/usr/bin/stremio-service/node", mode = "755" },
     { source = "resources/bin/ffmpeg-linux", dest = "/usr/bin/stremio-service/ffmpeg", mode = "755" },
+    { source = "resources/bin/ffprobe-linux64", dest = "/usr/bin/stremio-service/ffprobe", mode = "755" },
     { source = "resources/bin/server.js", dest = "/usr/bin/stremio-service/server.js", mode = "755" },
     { source = "resources/com.stremio.service.desktop", dest = "/usr/share/applications/com.stremio.service.desktop", mode = "644" },
     { source = "resources/com.stremio.service.svg", dest = "/usr/share/icons/hicolor/scalable/apps/com.stremio.service.svg", mode = "644" },

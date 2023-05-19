@@ -7,6 +7,10 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
 #[derive(Debug, Clone)]
 pub struct Server {
     inner: Arc<ServerInner>,
@@ -100,8 +104,20 @@ impl Config {
     /// If any other OS is supplied, see [`std::env::consts::OS`] for more details.
     pub fn ffmpeg_bin(operating_system: Option<&str>) -> Result<&'static str, Error> {
         match operating_system.unwrap_or(std::env::consts::OS) {
-            "linux" => Ok("ffmpeg-linux"),
-            "macos" => Ok("ffmpeg-macos"),
+            "linux" => {
+                if cfg!(feature = "bundled") {
+                    Ok("ffmpeg")
+                } else {
+                    Ok("ffmpeg-linux")
+                }
+            }
+            "macos" => {
+                if cfg!(feature = "bundled") {
+                    Ok("ffmpeg")
+                } else {
+                    Ok("ffmpeg-macos")
+                }
+            }
             "windows" => Ok("ffmpeg-windows.exe"),
             os => bail!("Operating system {} is not supported", os),
         }
@@ -141,6 +157,8 @@ impl Server {
 
     pub fn start(&self) -> Result<(), Error> {
         let mut command = Command::new(&self.inner.config.node);
+        #[cfg(target_os = "windows")]
+        command.creation_flags(CREATE_NO_WINDOW);
         command.env("FFMPEG_BIN", &self.inner.config.ffmpeg);
         command.arg(&self.inner.config.server);
 

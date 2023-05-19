@@ -1,34 +1,23 @@
+#![cfg_attr(
+    all(target_os = "windows", feature = "bundled",),
+    windows_subsystem = "windows"
+)]
 use anyhow::Context;
 use clap::Parser;
 use std::error::Error;
 
 use stremio_service::app::{handle_stremio_protocol, Application, Config};
-
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-pub struct Cli {
-    /// Whether or not to skip the updater
-    ///
-    /// This options is not used for `*nix` systems
-    #[arg(short, long)]
-    pub skip_updater: bool,
-
-    /// Open an URL with a custom `stremio://` scheme.
-    ///
-    /// If empty URL or no url is provided, the service will skip this argument.
-    #[clap(short, long)]
-    pub open: Option<String>,
-}
+use stremio_service::args::Args;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
 
-    let cli = Cli::parse();
+    let cli = Args::parse();
 
-    if let Some(url) = cli.open {
+    if let Some(url) = cli.open.as_ref() {
         if !url.is_empty() {
-            handle_stremio_protocol(url);
+            handle_stremio_protocol(url.clone());
         }
     }
 
@@ -43,7 +32,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .join("resources")
         .join("bin");
 
-    let config = Config::new(home_dir, service_bins_dir, !cli.skip_updater)?;
+    let config = Config::new(cli, home_dir, service_bins_dir)?;
     log::info!("Using service configuration: {:?}", config);
 
     let application = Application::new(config);

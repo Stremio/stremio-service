@@ -8,11 +8,13 @@ on:
 jobs:
   macos-release:
     runs-on: macos-latest
+    env:
+      APP_IDENTITY: "FA18F75D76A5D513F8465C671CD0FE2F7F9AA848"
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Rust setup
-        uses: actions-rs/toolchain@v1
+        uses: actions-rs/toolchain@v1.0.6
         with:
           toolchain: stable
       - name: Node setup
@@ -23,24 +25,80 @@ jobs:
         id: set-up-homebrew
         uses: Homebrew/actions/setup-homebrew@master
       - name: Utils
-        run: npm install -g create-dmg && brew install graphicsmagick imagemagick
+        run: |
+          brew install graphicsmagick imagemagick
+          npm -g install appdmg
       - name: Build
         run: cargo build --release --features=bundled
+      - name: Bundle
+        run: |
+          cargo run --bin bundle-macos
+      - name: Setup keychain
+        run: |
+          security create-keychain -p stremioservice build.keychain
+          security default-keychain -s build.keychain
+          security set-keychain-settings build.keychain
+          security unlock-keychain -p stremioservice build.keychain
+          security import ./resources/certificates/developer_id_Installer.p12 -k build.keychain -P ${{ secrets.APPLE_CERTIFICATE_PASSWORD }} -T /usr/bin/codesign
+          security import ./resources/certificates/developer_id_app.p12 -k build.keychain -P ${{ secrets.APPLE_CERTIFICATE_PASSWORD }} -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k stremioservice build.keychain
+          security find-identity -v
+      - name: Sign app
+        run: |
+          codesign --deep --force --verbose --sign "$APP_IDENTITY" --entitlements ./resources/entitlements.plist --options runtime target/macos/StremioService.app
+      - name: Compress app
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent target/macos/StremioService.app target/macos/StremioService.app.zip
+      - name: Notarize app
+        env:
+          NOTARIZATION_PWD: ${{ secrets.APPLE_DEVACCOUNT_NOTARIZATION_APP_SPECIFIC_PWD }}
+          TEAM_ID: ${{ secrets.APPLE_DEVELOPER_TEAM_ID }}
+        run: |
+          REQUEST=$(xcrun altool --notarize-app -t osx -f target/macos/StremioService.app.zip --primary-bundle-id com.smartcodeltd.stremio -u "ivo@linvo.com" -p "$NOTARIZATION_PWD" --asc-provider "$TEAM_ID" | awk '/RequestUUID =/ { print $3 }')
+          echo Got request ID: $REQUEST
+          sleep 480
+          echo Check the notarization status...
+          xcrun altool --notarization-info "$REQUEST" -u "ivo@linvo.com" -p "$NOTARIZATION_PWD"
+          echo Stapling the app...
+          xcrun stapler staple "target/macos/StremioService.app"
+
       - name: Package
-        run: cargo run --bin bundle-macos && create-dmg --overwrite target/macos/*.app target/macos 2> /dev/null
+        run: |
+          appdmg ./resources/appdmg.json "target/macos/StremioService.dmg"
+      
+      - name: Sign DMG
+        run: |
+          codesign --deep --force --verbose --sign "$APP_IDENTITY" target/macos/StremioService.dmg
+  
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-region: eu-west-1
+
+      - name: Upload to Amazon S3
+        run: |
+          aws s3 cp --acl public-read target/macos/StremioService.dmg s3://stremio-artifacts/stremio-service/${{ github.ref_name }}/
+
+      - name: Generate RC descriptor
+        run: |
+          node ./generate_descriptor.js --wait-all --tag=${{ github.ref_name }}
+
       - name: Upload dmg release
         uses: svenstaro/upload-release-action@v1-release
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: target/macos/*.dmg
+          asset_name: StremioService.dmg
           tag: ${{ github.ref }}
           overwrite: true
           file_glob: true
       - name: Zip release for macos
-        uses: vimtor/action-zip@v1
+        uses: vimtor/action-zip@v1.1
         with:
           # todo: add license
-          files: resources/bin/ffmpeg-macos resources/bin/node target/release/stremio-service resources/bin/server.js
+          files: resources/bin/ffmpeg-macos resources/bin/ffprobe-macos resources/bin/node target/release/stremio-service resources/bin/server.js
           dest: stremio-service-macos.zip
       - name: Upload zip release
         uses: svenstaro/upload-release-action@v1-release

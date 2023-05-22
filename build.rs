@@ -14,7 +14,8 @@ use xz::bufread::XzDecoder;
 #[cfg(target_os = "windows")]
 use chrono::{Datelike, Local};
 
-const STREMIO_SERVER_URL: Lazy<Url> = Lazy::new(|| "https://dl.strem.io/server/".parse().unwrap());
+static STREMIO_SERVER_URL: Lazy<Url> = Lazy::new(|| "https://dl.strem.io/server/".parse().unwrap());
+
 #[cfg(target_os = "linux")]
 const NODE_LINUX_ARCHIVE: &str = "https://nodejs.org/dist/v18.12.1/node-v18.12.1-linux-x64.tar.xz";
 
@@ -61,7 +62,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     let current_dir = std::env::current_dir()?;
-    // TODO: check whether `/` is replaced in path on windows or we should use `join` like this:
     let platform_bins = current_dir.join("resources").join("bin").join(OS);
 
     let server_js_target = platform_bins.join("server.js");
@@ -85,6 +85,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let download_server_js = || -> Result<(), Box<dyn Error>> {
         let version_url = STREMIO_SERVER_URL
+            .clone()
             .join(&format!("{manifest_version}/server.js"))
             .expect("Should never fail");
 

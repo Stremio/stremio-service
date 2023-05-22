@@ -1,4 +1,5 @@
 !.gitignore
 !ffmpeg-*
 server.js
-node
+server_version.txt
+linux/node

@@ -11,6 +11,10 @@ readme = "README.md"
 
 default-run = "stremio-service"
 
+[package.metadata.server]
+# version = "0.19"
+version = "hls2"
+
 [features]
 default = []
 # Wheather or not we're running the app in a bundled (installed) mode.
@@ -84,6 +88,14 @@ tar = "0.4"
 xz = "0.1.0"
 zip-extract = "0.1"
 
+url = { version = "2.3" }
+once_cell = "1.16"
+
+serde = "1"
+
+# For getting the Server.js version from this Cargo.toml file
+cargo_toml = "0.15"
+
 [profile.release]
 opt-level = 3
 lto = true
@@ -92,15 +104,18 @@ strip = "debuginfo"
 [package.metadata.deb]
 copyright = "© 2022 Smart Code OOD"
 extended-description = "Media Center"
+# depends = "$auto, node (>=14.21.1), ffprobe (>=4.2.7)"
 depends = "$auto"
 section = "Stremio;Media;Play;"
 priority = "optional"
 assets = [
     ["target/release/stremio-service", "/usr/bin/stremio-service/stremio-service", "755"],
-    ["resources/bin/node", "/usr/bin/stremio-service/node", "755"],
-    ["resources/bin/server.js", "/usr/bin/stremio-service/server.js", "755"],
-    ["resources/bin/ffmpeg-linux", "/usr/bin/stremio-service/ffmpeg", "755"],
-    ["resources/bin/ffprobe-linux", "/usr/bin/stremio-service/ffprobe", "755"],
+    # We use a specific version of ffmpeg-jellyfin
+    ["resources/bin/linux/ffmpeg", "/usr/bin/stremio-service/ffmpeg", "755"],
+    # Should be possible to remove with `depends` but it shows an error at the moment.
+    ["resources/bin/linux/node", "/usr/bin/stremio-service/node", "755"],
+    ["resources/bin/linux/ffprobe", "/usr/bin/stremio-service/ffprobe", "755"],
+    ["resources/bin/linux/server.js", "/usr/bin/stremio-service/server.js", "755"],
     ["resources/com.stremio.service.desktop", "/usr/share/applications/com.stremio.service.desktop", "644"],
     ["resources/com.stremio.service.svg", "/usr/share/icons/hicolor/scalable/apps/com.stremio.service.svg", "644"],
 ]
@@ -110,17 +125,21 @@ features = ["bundled"]
 # post_install_script = "gnome_version=$(gnome-shell --version  | awk '{print $NF}') && echo https://extensions.gnome.org/extension-data/appindicatorsupportrgcjonas.gmail.com.GNOME_VERSION.shell-extension.zip | sed -e s/GNOME_VERSION/$gnome_version/g"
 assets = [
     { source = "target/release/stremio-service", dest = "/usr/bin/stremio-service/stremio-service", mode = "755" },
-    { source = "resources/bin/node", dest = "/usr/bin/stremio-service/node", mode = "755" },
-    { source = "resources/bin/ffmpeg-linux", dest = "/usr/bin/stremio-service/ffmpeg", mode = "755" },
-    { source = "resources/bin/ffprobe-linux64", dest = "/usr/bin/stremio-service/ffprobe", mode = "755" },
-    { source = "resources/bin/server.js", dest = "/usr/bin/stremio-service/server.js", mode = "755" },
+    { source = "resources/bin/linux/ffmpeg", dest = "/usr/bin/stremio-service/bin/ffmpeg", mode = "755" },
+    # Should be possible to remove with `depends` but it shows an error at the moment.
+    { source = "resources/bin/linux/node", dest = "/usr/bin/stremio-service/bin/node", mode = "755" },
+    { source = "resources/bin/linux/ffprobe", dest = "/usr/bin/stremio-service/bin/ffprobe", mode = "755" },
+    { source = "resources/bin/linux/server.js", dest = "/usr/bin/stremio-service/server.js", mode = "755" },
     { source = "resources/com.stremio.service.desktop", dest = "/usr/share/applications/com.stremio.service.desktop", mode = "644" },
     { source = "resources/com.stremio.service.svg", dest = "/usr/share/icons/hicolor/scalable/apps/com.stremio.service.svg", mode = "644" },
 ]
+# depends = "$auto, node (>=14.21.1), ffprobe (>=4.2.7)"
 features = ["bundled"]
 
 [package.metadata.generate-rpm.requires]
 libappindicator-gtk3 = "*"
+# node = ">=14.21.1"
+# ffprobe = ">=4.2.7"
 
 [package.metadata.macos]
 name = "StremioService"
@@ -132,8 +151,8 @@ url_scheme = "stremio"
 executable = "stremio-service"
 bins = [
     ["target/release/stremio-service", "stremio-service"],
-    ["resources/bin/node-macos", "node"],
-    ["resources/bin/server.js", "server.js"],
-    ["resources/bin/ffmpeg-macos", "ffmpeg"],
-    ["resources/bin/ffprobe-macos", "ffprobe"]
+    ["resources/bin/macos/node", "node"],
+    ["resources/bin/macos/server.js", "server.js"],
+    ["resources/bin/macos/ffmpeg", "ffmpeg"],
+    ["resources/bin/macos/ffprobe", "ffprobe"]
 ]

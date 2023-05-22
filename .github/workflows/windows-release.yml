@@ -21,7 +21,7 @@ jobs:
         uses: vimtor/action-zip@v1.1
         with:
           # todo: add license
-          files: resources/bin/ffmpeg-windows.exe resources/bin/ffprobe.exe resources/bin/node.exe target/release/stremio-service.exe resources/bin/server.js
+          files: resources/bin/windows/ffmpeg.exe resources/bin/windows/ffprobe.exe resources/bin/windows/node.exe target/release/stremio-service.exe resources/bin/windows/server.js
           dest: stremio-service-windows.zip
       - name: Installer
         run: |

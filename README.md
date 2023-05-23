@@ -44,7 +44,7 @@ npm install -g create-dmg && brew install graphicsmagick imagemagick
 
 ### Run
 
-By default the `stremio-service` binary is ran:
+By default the `stremio-service` binary is ran with `info` log level:
 
 ```
 RUST_LOG=info cargo run
@@ -127,8 +127,10 @@ The Manifest is located [resources/com.stremio.Service.json](.resources/com.stre
 
 #### MacOS
 
+Use either `cargo run --bin bundle-macos` or its alias `cargo macos` to build the MacOS `.app` and then build the `dmg` package:
+
 ```
-cargo run --bin bundle-macos && create-dmg --overwrite target/macos/*.app target/macos
+cargo macos && create-dmg --overwrite target/macos/*.app target/macos
 ```
 
 ## Releasing new version

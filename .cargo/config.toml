@@ -1,0 +1,2 @@
+[alias]
+macos = "run --bin bundle-macos"

@@ -7,6 +7,11 @@ on:
     tags-ignore:
       - '**'
 
+# Stops the running workflow of previous pushes
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     runs-on: ubuntu-latest

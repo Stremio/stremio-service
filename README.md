@@ -121,7 +121,7 @@ cargo generate-rpm
 
 #### Flatpak
 
-The Manifest is located [resources/com.stremio.Service.json](.resources/com.stremio.Service.json) and you can bundle the application using the script:
+The Manifest is located [com.stremio.Service.json](./com.stremio.Service.json) and you can bundle the application using the script:
 
 `./build-flatpak.sh`
 

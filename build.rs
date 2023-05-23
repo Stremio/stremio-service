@@ -86,7 +86,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let download_server_js = || -> Result<(), Box<dyn Error>> {
         let version_url = STREMIO_SERVER_URL
             .clone()
-            .join(&format!("{manifest_version}/server.js"))
+            .join(&format!("{manifest_version}/desktop/server.js"))
             .expect("Should never fail");
 
         let server_js_file = reqwest::blocking::get(version_url)?

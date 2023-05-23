@@ -2,7 +2,6 @@
     all(target_os = "windows", feature = "bundled"),
     windows_subsystem = "windows"
 )]
-use std::env::consts::OS;
 use std::error::Error;
 
 use anyhow::Context;
@@ -34,10 +33,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let service_bins_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("resources")
         .join("bin")
-        .join(OS);
+        .join(std::env::consts::OS);
 
     let config = Config::new(cli, home_dir, service_bins_dir)?;
-    log::info!("Using service configuration: {:?}", config);
+    log::info!("Using service configuration: {:#?}", config);
 
     let application = Application::new(config);
 

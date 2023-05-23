@@ -12,8 +12,7 @@ readme = "README.md"
 default-run = "stremio-service"
 
 [package.metadata.server]
-# version = "0.19"
-version = "hls2"
+version = "v4.20.0"
 
 [features]
 default = []

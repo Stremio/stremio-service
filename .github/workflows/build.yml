@@ -7,8 +7,31 @@ on:
     tags-ignore:
       - '**'
 
+# Stops the running workflow of previous pushes
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Rust setup
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install libgtk-3-dev
+      - name: Lint formatting
+        run: cargo fmt --all -- --check
+      - name: Lint clippy
+        run: cargo clippy --all --no-deps -- -D warnings
   build:
+    needs: lint
     strategy:
       fail-fast: false
       matrix:
@@ -16,19 +39,13 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Rust setup
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
+        uses: dtolnay/rust-toolchain@stable
       - name: Install dependencies
         if: matrix.platform == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install build-essential libgtk-3-dev pkg-config libssl-dev libayatana-appindicator3-dev
-      - name: Lint formatting
-        run: cargo fmt --all -- --check
-      - name: Lint clippy
-        run: cargo clippy --all --no-deps -- -D warnings
       - name: Build
         run: cargo build

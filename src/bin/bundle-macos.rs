@@ -45,7 +45,7 @@ fn main() -> anyhow::Result<()> {
         .join("macos");
     std::fs::create_dir_all(target_path.clone()).context(format!(
         "Failed to create target dir: {}",
-        target_path.display().to_string()
+        target_path.display()
     ))?;
 
     let bundle_path = target_path.join(metadata.name + ".app");
@@ -58,7 +58,7 @@ fn main() -> anyhow::Result<()> {
     let contents_path = bundle_path.join("Contents");
     std::fs::create_dir_all(contents_path.clone()).context(format!(
         "Failed to create directory: {}",
-        contents_path.display().to_string()
+        contents_path.display()
     ))?;
 
     let info_plist = format!("

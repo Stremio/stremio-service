@@ -19,17 +19,22 @@ jobs:
           sudo apt-get install build-essential libgtk-3-dev pkg-config libssl-dev libayatana-appindicator3-dev
           cargo install cargo-deb
           cargo install cargo-generate-rpm
+      - name: Get current date
+        id: date
+        run: echo "TODAY_DATE=$(date +'%d %b %Y')" >> $GITHUB_OUTPUT
       # Builds the deb linux package
       - name: Build deb package
         run: cargo deb
       - name: Upload deb release
-        uses: svenstaro/upload-release-action@v1-release
+        uses: softprops/action-gh-release@v1
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: target/debian/*.deb
-          tag: ${{ github.ref }}
-          overwrite: true
-          file_glob: true
+          # Use the same name as all releases!
+          name: Stremio Service ${{ github.ref_name }} (${{ steps.date.outputs.TODAY_DATE }})
+          draft: true
+          prerelease: false
+          fail_on_unmatched_files: true
+          files: |
+            target/debian/*.deb
       # Builds the rpm linux package
       - name: Build release
         run: cargo build --release --features=bundled
@@ -37,11 +42,13 @@ jobs:
         run: strip -s target/release/stremio-service
       - name: Build rpm package
         run: cargo generate-rpm
-      - name: Upload rpm release
-        uses: svenstaro/upload-release-action@v1-release
+      - name: Upload rpm to release
+        uses: softprops/action-gh-release@v1
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: target/generate-rpm/*.rpm
-          tag: ${{ github.ref }}
-          overwrite: true
-          file_glob: true
+          # Use the same name as all releases!
+          name: Stremio Service ${{ github.ref_name }} (${{ steps.date.outputs.TODAY_DATE }})
+          draft: true
+          prerelease: false
+          fail_on_unmatched_files: true
+          files: |
+            target/generate-rpm/*.rpm

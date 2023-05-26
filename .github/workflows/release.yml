@@ -17,9 +17,9 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v1
         with:
+          name: Stremio Service ${{ github.ref_name }} (${{ steps.date.outputs.TODAY_DATE }})
           draft: true
           prerelease: false
           fail_on_unmatched_files: true
           # From action docs: "body will be pre-pended to the automatically generated notes."
           generate_release_notes: true
-          name: Stremio Service ${{ github.ref_name }} (${{ steps.date.outputs.TODAY_DATE }})

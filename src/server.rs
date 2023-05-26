@@ -24,20 +24,25 @@ struct ServerInner {
 
 #[derive(Debug, Clone)]
 pub struct Config {
-    /// nodejs binary path
+    /// Full `nodejs` binary path
     ///
     /// Includes the OS-dependent suffix:
     /// - `linux` - `node`
     /// - `macos` - `node`
     /// - `windows` - `node.exe`
     node: PathBuf,
-    /// ffmpeg binary path
+    /// Full `ffmpeg` binary path
     ///
-    /// Includes the OS-dependent suffix:
-    /// - `linux` - `ffmpeg-linux`
-    /// - `macos` - `ffmpeg-macos`
-    /// - `windows` - `ffmpeg-windows.exe`
+    /// - `linux` - `ffmpeg`
+    /// - `macos` - `ffmpeg`
+    /// - `windows` - `ffmpeg.exe`
     ffmpeg: PathBuf,
+    /// Full `ffprobe` binary path
+    ///
+    /// - `linux` - `ffprobe`
+    /// - `macos` - `ffprobe`
+    /// - `windows` - `ffprobe.exe`
+    ffprobe: PathBuf,
     /// server.js binary path
     server: PathBuf,
 }
@@ -48,7 +53,7 @@ impl Config {
     /// The directory should contain the following binaries:
     ///
     /// - node(.exe) - depending on target OS being `windows` or not.
-    /// - ffmpeg(-linux | -macos | -windows.exe) - depending on the target OS.
+    /// - ffmpeg(.exe) - depending on target OS being `windows` or not.
     /// - server.js
     ///
     /// # Errors
@@ -57,30 +62,67 @@ impl Config {
     pub fn at_dir(directory: PathBuf) -> Result<Self, Error> {
         if directory.is_dir() {
             let node = directory.join(Self::node_bin(None)?);
-            let ffmpeg = directory.join(Self::ffmpeg_bin(None)?);
             let server = directory.join("server.js");
 
-            match (
-                node.try_exists().context("Nodejs")?,
-                ffmpeg.try_exists().context("ffmpeg")?,
-                server.try_exists().context("server.js")?,
-            ) {
-                (false, true, true) => bail!("Nodejs not found at: {}", node.display().to_string()),
-                (true, false, true) => {
+            let ffmpeg = directory.join(Self::ffmpeg_bin(None)?);
+            let ffprobe = directory.join(Self::ffprobe_bin(None)?);
+
+            let node_exists = node.try_exists().context("Nodejs").map(|exists| {
+                if !exists {
+                    bail!("Nodejs not found at: {}", node.display().to_string())
+                } else {
+                    Ok(())
+                }
+            })?;
+
+            let ffmpeg_exists = ffmpeg.try_exists().context("ffmpeg").map(|exists| {
+                if !exists {
                     bail!("ffmpeg not found at: {}", ffmpeg.display().to_string())
+                } else {
+                    Ok(())
                 }
-                (true, true, false) => {
+            })?;
+
+            let ffprobe_exists = ffprobe.try_exists().context("ffprobe").map(|exists| {
+                if !exists {
+                    bail!("ffprobe not found at: {}", server.display().to_string())
+                } else {
+                    Ok(())
+                }
+            })?;
+            let server_exists = ffprobe.try_exists().context("server.js").map(|exists| {
+                if !exists {
                     bail!("server.js not found at: {}", server.display().to_string())
+                } else {
+                    Ok(())
                 }
-                (false, false, false) => bail!(
-                    "Nodejs, ffmpeg and server.js not found in directory: {}",
-                    directory.display().to_string()
-                ),
-                _ => Ok(Self {
+            })?;
+
+            let binaries_exist = vec![node_exists, ffmpeg_exists, ffprobe_exists, server_exists];
+
+            // we have at least 1 missing binary
+            if binaries_exist.iter().any(|result| result.is_err()) {
+                bail!(
+                    "One or more binaries were not found; paths: {}; {}; {}; {}; Errors: {:?}",
+                    node.display().to_string(),
+                    ffmpeg.display().to_string(),
+                    ffprobe.display().to_string(),
+                    server.display().to_string(),
+                    binaries_exist
+                        .iter()
+                        .filter_map(|result| match result {
+                            Ok(()) => None,
+                            Err(err) => Some(err),
+                        })
+                        .collect::<Vec<_>>()
+                );
+            } else {
+                Ok(Self {
                     node,
                     ffmpeg,
+                    ffprobe,
                     server,
-                }),
+                })
             }
         } else {
             bail!(
@@ -93,8 +135,8 @@ impl Config {
     /// Returns the ffmpeg binary name (Operating system dependent).
     ///
     /// Supports only 3 OSes:
-    /// - `linux` - returns `ffmpeg-linux`
-    /// - `macos` returns `ffmpeg-macos`
+    /// - `linux` - returns `ffmpeg-linux` or `ffmpeg` (when `bundled` feature is enabled)
+    /// - `macos` returns `ffmpeg-macos` or `ffmpeg` (when `bundled` feature is enabled)
     /// - `windows` returns `ffmpeg-windows.exe`
     ///
     /// If no OS is supplied, [`std::env::consts::OS`] is used.
@@ -104,21 +146,16 @@ impl Config {
     /// If any other OS is supplied, see [`std::env::consts::OS`] for more details.
     pub fn ffmpeg_bin(operating_system: Option<&str>) -> Result<&'static str, Error> {
         match operating_system.unwrap_or(std::env::consts::OS) {
-            "linux" => {
-                if cfg!(feature = "bundled") {
-                    Ok("ffmpeg")
-                } else {
-                    Ok("ffmpeg-linux")
-                }
-            }
-            "macos" => {
-                if cfg!(feature = "bundled") {
-                    Ok("ffmpeg")
-                } else {
-                    Ok("ffmpeg-macos")
-                }
-            }
-            "windows" => Ok("ffmpeg-windows.exe"),
+            "linux" | "macos" => Ok("ffmpeg"),
+            "windows" => Ok("ffmpeg.exe"),
+            os => bail!("Operating system {} is not supported", os),
+        }
+    }
+
+    pub fn ffprobe_bin(operating_system: Option<&str>) -> Result<&'static str, Error> {
+        match operating_system.unwrap_or(std::env::consts::OS) {
+            "linux" | "macos" => Ok("ffprobe"),
+            "windows" => Ok("ffprobe.exe"),
             os => bail!("Operating system {} is not supported", os),
         }
     }
@@ -137,8 +174,7 @@ impl Config {
     /// If any other OS is supplied, see [`std::env::consts::OS`] for more details.
     pub fn node_bin(operating_system: Option<&str>) -> Result<&'static str, Error> {
         match operating_system.unwrap_or(std::env::consts::OS) {
-            "linux" => Ok("node"),
-            "macos" => Ok("node"),
+            "linux" | "macos" => Ok("node"),
             "windows" => Ok("node.exe"),
             os => bail!("Operating system {} is not supported", os),
         }
@@ -160,7 +196,10 @@ impl Server {
         #[cfg(target_os = "windows")]
         command.creation_flags(CREATE_NO_WINDOW);
         command.env("FFMPEG_BIN", &self.inner.config.ffmpeg);
+        command.env("FFPROBE_BIN", &self.inner.config.ffprobe);
         command.arg(&self.inner.config.server);
+
+        info!("Starting server.js: {:#?}", command);
 
         if self
             .inner

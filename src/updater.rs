@@ -103,7 +103,7 @@ impl Updater {
             .context("Invalid update descriptor")?;
 
         if update_response.version != update_descriptor.version {
-            return Err(anyhow!("Missmatched update versions"));
+            return Err(anyhow!("Mismatched update versions"));
         }
         let installer = update_descriptor
             .files

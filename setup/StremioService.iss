@@ -2,7 +2,7 @@
 #define MyAppShortName "StremioService"
 #define MyAppExeName "stremio-service.exe"
 #define MyAppBinLocation SourcePath + "..\target\release\"
-#define MyAppResBinLocation SourcePath + "..\resources\bin\"
+#define MyAppResBinLocation SourcePath + "..\resources\bin\windows\"
 #define MyAppExeLocation MyAppBinLocation + MyAppExeName
 #define MyAppVersion() GetVersionComponents(MyAppExeLocation, Local[0], Local[1], Local[2], Local[3]), \
   Str(Local[0]) + "." + Str(Local[1]) + "." + Str(Local[2])
@@ -144,7 +144,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"
 [Files]
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 Source: "{#MyAppExeLocation}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#MyAppResBinLocation}ffmpeg-windows.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#MyAppResBinLocation}ffmpeg.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyAppResBinLocation}ffprobe.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyAppResBinLocation}node.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyAppResBinLocation}server.js"; DestDir: "{app}"; Flags: ignoreversion

@@ -58,3 +58,4 @@ jobs:
           fail_on_unmatched_files: true
           files: |
             stremio-service-windows.zip
+            StremioServiceSetup.exe

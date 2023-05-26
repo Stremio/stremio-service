@@ -1,30 +1,38 @@
-use anyhow::{anyhow, Context, Error};
-use fslock::LockFile;
-use log::{error, info};
-use rand::Rng;
-use rust_embed::RustEmbed;
 #[cfg(all(feature = "bundled", any(target_os = "linux", target_os = "macos")))]
 use std::path::Path;
-use std::path::PathBuf;
+use std::{fmt::Display, path::PathBuf, str::FromStr, time::Duration};
+
+use anyhow::{anyhow, bail, Context, Error};
+use fslock::LockFile;
+use log::{error, info, trace};
+use rand::Rng;
+use rust_embed::RustEmbed;
+use serde::{Deserialize, Serialize};
 use tao::{
     event::Event,
     event_loop::{ControlFlow, EventLoop},
-    menu::{ContextMenu, MenuId, MenuItemAttributes},
-    system_tray::{SystemTray, SystemTrayBuilder},
-    TrayId,
 };
+use tokio::{
+    io::{AsyncBufReadExt, BufReader},
+    sync::mpsc,
+    time::sleep,
+};
+use tokio_stream::{wrappers::ReceiverStream, StreamExt};
 use url::Url;
+use urlencoding::encode;
 
 use crate::{
     args::Args,
     config::{DATA_DIR, STREMIO_URL, UPDATE_ENDPOINT},
-    server::Server,
+    server::{Server, ServerSettingsResponse},
     updater::Updater,
-    util::load_icon,
 };
-use urlencoding::encode;
 
 use crate::server;
+
+use self::tray_menu::TrayMenu;
+
+pub mod tray_menu;
 
 /// Updater is supported only for non-linux operating systems.
 #[cfg(not(target_os = "linux"))]
@@ -41,6 +49,22 @@ pub struct Application {
     /// The video server process
     server: Server,
     config: Config,
+}
+
+#[derive(Debug, Default, Clone, Deserialize, Serialize)]
+enum ServerStatus {
+    #[default]
+    NotRunning,
+    Running {
+        config: server::Config,
+        version: String,
+        server_url: Url,
+    },
+}
+
+#[derive(Debug, Default)]
+pub struct TrayStatus {
+    server_js: ServerStatus,
 }
 
 #[derive(Debug, Clone)]
@@ -132,8 +156,8 @@ impl Application {
         let _fruit_app = register_apple_event_callbacks();
 
         // Showing the system tray icon as soon as possible to give the user a feedback
-        let event_loop = EventLoop::new();
-        let (mut system_tray, open_item_id, quit_item_id) = create_system_tray(&event_loop)?;
+        let event_loop: EventLoop<()> = EventLoop::new();
+        let mut tray_menu = TrayMenu::new(&event_loop)?;
 
         let current_version = env!("CARGO_PKG_VERSION")
             .parse()
@@ -149,7 +173,40 @@ impl Application {
             return Ok(());
         }
 
-        self.server.start().context("Failed to start server.js")?;
+        self.server
+            .start()
+            .await
+            .context("Failed to start Server")?;
+        // wait 2 seconds for the server to start
+        sleep(Duration::from_secs(5)).await;
+
+        let (server_url_sender, server_url_receiver) = mpsc::channel(100);
+
+        self.server.run_logger(server_url_sender);
+        let server_settings = self
+            .server
+            .settings()
+            .await
+            .context("Failed to get server settings")?;
+
+        let mut stream = ReceiverStream::new(server_url_receiver);
+
+        while let Some(server_url) = stream.next().await {
+            let tray_status = TrayStatus {
+                server_js: ServerStatus::Running {
+                    config: self.config.server.clone(),
+                    version: server_settings.values.server_version,
+                    server_url,
+                },
+            };
+    
+            tray_menu.set_status(tray_status);
+
+            break;
+        }
+        
+        // self.run_tray_status_updater(server_settings, server_url_receiver);
+
         // cheap to clone and interior mutability
         let mut server = self.server.clone();
 
@@ -157,17 +214,16 @@ impl Application {
             *control_flow = ControlFlow::Wait;
 
             match event {
-                Event::MenuEvent { menu_id, .. } => {
-                    if menu_id == open_item_id {
-                        open_stremio_web(None);
-                    }
-                    if menu_id == quit_item_id {
-                        system_tray.take();
-                        *control_flow = ControlFlow::Exit;
-                    }
+                Event::MenuEvent { menu_id, .. } if menu_id == tray_menu.open.clone().id() => {
+                    // FIXME: call with the app's server_url from the command!
+                    StremioWeb::OpenWeb { server_url: None }.open()
+                }
+                Event::MenuEvent { menu_id, .. } if menu_id == tray_menu.quit.clone().id() => {
+                    // drop(tray_menu);
+                    *control_flow = ControlFlow::Exit;
                 }
                 Event::LoopDestroyed => {
-                    if let Err(err) = server.stop() {
+                    if let Err(err) = futures::executor::block_on(server.stop()) {
                         error!("{err}")
                     }
                 }
@@ -175,52 +231,94 @@ impl Application {
             }
         });
     }
+
+    // fn run_tray_status_updater(
+    //     &self,
+    //     tray_menu: TrayMenu,
+    //     settings: ServerSettingsResponse,
+    //     server_url_receiver: mpsc::Receiver<Url>,
+    // ) {
+    //     tokio::spawn(async move {
+    //         let stream = ReceiverStream::new(server_url_receiver);
+    //         while let Some(url) = stream.next().await {
+    //             let tray_status = TrayStatus {
+    //                 server_js: ServerStatus::Running {
+    //                     config: self.config.server.clone(),
+    //                     version: settings.values.server_version,
+    //                     server_url: url,
+    //                 },
+    //             };
+
+    //             // tray_menu.set_status(tray_status);
+    //         }
+    //     });
+    // }
 }
 
-fn create_system_tray(
-    event_loop: &EventLoop<()>,
-) -> Result<(Option<SystemTray>, MenuId, MenuId), anyhow::Error> {
-    let mut tray_menu = ContextMenu::new();
-    let open_item = tray_menu.add_item(MenuItemAttributes::new("Open Stremio Web"));
-    let quit_item = tray_menu.add_item(MenuItemAttributes::new("Quit"));
-
-    let version_item_label = format!("v{}", env!("CARGO_PKG_VERSION"));
-    let version_item = MenuItemAttributes::new(version_item_label.as_str()).with_enabled(false);
-    tray_menu.add_item(version_item);
-
-    let icon_file = Icons::get("icon.png").ok_or_else(|| anyhow!("Failed to get icon file"))?;
-    let icon = load_icon(icon_file.data.as_ref());
-
-    let system_tray = SystemTrayBuilder::new(icon, Some(tray_menu))
-        .with_id(TrayId::new("main"))
-        .build(event_loop)
-        .context("Failed to build the application system tray")?;
-
-    Ok((Some(system_tray), open_item.id(), quit_item.id()))
+/// Addon's `stremio://` prefixed url
+pub struct AddonUrl {
+    url: Url,
 }
+impl FromStr for AddonUrl {
+    type Err = anyhow::Error;
 
-/// Handles `stremio://` urls by replacing the custom scheme with `https://`
-/// and opening it.
-/// Either opens the Addon installation link or the Web UI url
-pub fn handle_stremio_protocol(open_url: String) {
-    if open_url.starts_with("stremio://") {
-        let url = open_url.replace("stremio://", "https://");
-        open_stremio_web(Some(url));
+    fn from_str(open_url: &str) -> Result<Self, Self::Err> {
+        if open_url.starts_with("stremio://") {
+            let url = open_url.replace("stremio://", "https://").parse::<Url>()?;
+
+            return Ok(Self { url });
+        }
+
+        bail!("Stremio's addon protocol url starts with stremio://")
     }
 }
 
-fn open_stremio_web(addon_manifest_url: Option<String>) {
-    let mut url = STREMIO_URL.to_string();
-    if let Some(p) = addon_manifest_url {
-        url = format!("{}/#/addons?addon={}", STREMIO_URL, &encode(&p));
+impl AddonUrl {
+    pub fn to_url(&self) -> Url {
+        self.url.clone()
     }
+}
+impl Display for AddonUrl {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let stremio_protocol = self.url.to_string().replace("https://", "stremio://");
 
-    match open::that(url) {
-        Ok(_) => info!("Opened Stremio Web in the browser"),
-        Err(e) => error!("Failed to open Stremio Web: {}", e),
+        f.write_str(&stremio_protocol)
     }
 }
 
+pub struct ServerUrl {
+    url: Url,
+}
+
+pub enum StremioWeb {
+    // todo: replace with url
+    Addon(AddonUrl),
+    OpenWeb { server_url: Option<Url> },
+}
+
+impl StremioWeb {
+    pub fn open(self) {
+        let url_to_open = match self {
+            StremioWeb::Addon(addon_url) => addon_url.to_url(),
+            StremioWeb::OpenWeb {
+                server_url: Some(server_url),
+            } => {
+                let mut stremio_url = STREMIO_URL.clone();
+
+                let query = format!("streamingServer={}", encode(&server_url.to_string()));
+
+                stremio_url.set_query(Some(&query));
+                stremio_url
+            }
+            StremioWeb::OpenWeb { server_url: None } => STREMIO_URL.clone(),
+        };
+
+        match open::that(url_to_open.to_string()) {
+            Ok(_) => info!("Opened Stremio Web in the browser: {url_to_open}"),
+            Err(e) => error!("Failed to open {url_to_open} in Stremio Web: {}", e),
+        }
+    }
+}
 /// Only for Linux and MacOS
 #[cfg(all(feature = "bundled", any(target_os = "linux", target_os = "macos")))]
 fn make_it_autostart(home_dir: impl AsRef<Path>) {
@@ -295,7 +393,14 @@ fn register_apple_event_callbacks() -> fruitbasket::FruitApp<'static> {
         FruitCallbackKey::Method("handleEvent:withReplyEvent:"),
         Box::new(move |event| {
             let open_url: String = fruitbasket::parse_url_event(event);
-            handle_stremio_protocol(open_url);
+
+            let open_url = match open_url.parse() {
+                Ok(addon_url) => StremioWeb::Addon(open_url).open(),
+                Err(err) => {
+                    error!("{err}");
+                    StremioWeb::OpenWeb { server_url: None }.open()
+                }
+            };
         }),
     );
 

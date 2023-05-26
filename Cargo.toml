@@ -34,7 +34,8 @@ clap = { version = "4.0", features = ["derive"] }
 anyhow = "1"
 
 # Async executor
-tokio = { version = "1.27", features = ["fs", "macros", "rt-multi-thread"] }
+tokio = { version = "1.27", features = ["fs", "macros", "rt-multi-thread", "time", "process"] }
+futures = { version = "0.3", features = ["executor"] }
 
 # Logging
 env_logger = "0.10"
@@ -56,7 +57,7 @@ semver = "1.0"
 # Open default app
 open = "4.1"
 # http calls
-reqwest = { version = "0.11", features = ["stream", "json"] }
+reqwest = { version = "0.11", features = ["stream", "json", "blocking"] }
 # embedding files in binary
 rust-embed = "6.4"
 serde = { version = "1", features = ["derive"] }
@@ -70,6 +71,7 @@ url = { version = "2.3", features = ["serde"] }
 
 urlencoding = "2.1"
 zip-extract = "0.1"
+tokio-stream = { version = "0.1.14", features = ["io-util"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # MacOS Apple Events handling

@@ -37,11 +37,16 @@ jobs:
         run: python -m pip install toml aiohttp
       - name: Build
         run: sh ./build-flatpak.sh
-      - name: Upload flatpak release
-        uses: svenstaro/upload-release-action@v1-release
+      - name: Get current date
+        id: date
+        run: echo "TODAY_DATE=$(date +'%d %b %Y')" >> $GITHUB_OUTPUT
+      - name: Upload flatpak to release
+        uses: softprops/action-gh-release@v1
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: flatpak/com.stremio.Service.flatpak
-          asset_name: com.stremio.Service.flatpak
-          tag: ${{ github.ref }}
-          overwrite: true
+          # Use the same name as all releases!
+          name: Stremio Service ${{ github.ref_name }} (${{ steps.date.outputs.TODAY_DATE }})
+          draft: true
+          prerelease: false
+          fail_on_unmatched_files: true
+          files: |
+            flatpak/com.stremio.Service.flatpak

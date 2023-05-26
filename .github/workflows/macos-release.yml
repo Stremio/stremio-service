@@ -85,26 +85,23 @@ jobs:
         run: |
           node ./generate_descriptor.js --wait-all --tag=${{ github.ref_name }}
 
-      - name: Upload dmg release
-        uses: svenstaro/upload-release-action@v1-release
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: target/macos/*.dmg
-          asset_name: StremioService.dmg
-          tag: ${{ github.ref }}
-          overwrite: true
-          file_glob: true
       - name: Zip release for macos
         uses: vimtor/action-zip@v1.1
         with:
           # todo: add license
           files: resources/bin/macos/ffmpeg resources/bin/macos/ffprobe resources/bin/macos/node target/release/stremio-service resources/bin/macos/server.js
           dest: stremio-service-macos.zip
-      - name: Upload zip release
-        uses: svenstaro/upload-release-action@v1-release
+      - name: Get current date
+        id: date
+        run: echo "TODAY_DATE=$(date +'%d %b %Y')" >> $GITHUB_OUTPUT
+      - name: Upload dmg and zip file to release
+        uses: softprops/action-gh-release@v1
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: stremio-service-macos.zip
-          asset_name: stremio-service-macos.zip
-          tag: ${{ github.ref }}
-          overwrite: true
+          # Use the same name as all releases!
+          name: Stremio Service ${{ github.ref_name }} (${{ steps.date.outputs.TODAY_DATE }})
+          draft: true
+          prerelease: false
+          fail_on_unmatched_files: true
+          files: |
+            target/macos/StremioService.dmg
+            stremio-service-macos.zip

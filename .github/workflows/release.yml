@@ -1,0 +1,25 @@
+name: Prepare draft release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  create-release:
+    name: Create draft release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get current date
+        id: date
+        run: echo "TODAY_DATE=$(date +'%d %b %Y')" >> $GITHUB_OUTPUT
+
+      - name: Create release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Stremio Service ${{ github.ref_name }} (${{ steps.date.outputs.TODAY_DATE }})
+          draft: true
+          prerelease: false
+          fail_on_unmatched_files: true
+          # From action docs: "body will be pre-pended to the automatically generated notes."
+          generate_release_notes: true

@@ -1,9 +1,9 @@
 [package]
 name = "stremio-service"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["Stremio"]
-description = "Freedom to Stream"
+description = "Stremio service - Freedom to Stream"
 license = "MIT"
 homepage = "https://stremio.com"
 repository = "https://github.com/Stremio/stremio-service/"

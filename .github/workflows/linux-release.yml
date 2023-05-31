@@ -24,7 +24,7 @@ jobs:
         run: echo "TODAY_DATE=$(date +'%d %b %Y')" >> $GITHUB_OUTPUT
       # Builds the deb linux package
       - name: Build deb package
-        run: cargo deb -o stremio-service_amd64.deb
+        run: cargo deb -o target/debian/stremio-service_amd64.deb
       - name: Upload deb release
         uses: softprops/action-gh-release@v1
         with:
@@ -41,7 +41,7 @@ jobs:
       - name: Strip debug symbols
         run: strip -s target/release/stremio-service
       - name: Build rpm package
-        run: cargo generate-rpm -o stremio-service_x86_64.rpm
+        run: cargo generate-rpm -o target/generate-rpm/stremio-service_x86_64.rpm
       - name: Upload rpm to release
         uses: softprops/action-gh-release@v1
         with:

@@ -1,7 +1,7 @@
 /target
 .flatpak-builder
-flatpak/flatpak-build
-flatpak/stremio-flatpak-repo
+flatpak/build
+flatpak/repo
 generated-sources.json
 com.stremio.Service.flatpak
 StremioServiceSetup.exe

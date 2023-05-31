@@ -19,8 +19,8 @@
   <launchable type="desktop-id">com.stremio.Service.desktop</launchable>
 
   <releases>
-    <release version="0.1.3" date="2023-05-31" />
-    <release version="0.1.4" date="2023-05-31" />
     <release version="0.1.5" date="2023-05-31" />
+    <release version="0.1.4" date="2023-05-31" />
+    <release version="0.1.3" date="2023-05-31" />
   </releases>
 </component>

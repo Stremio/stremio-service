@@ -16,7 +16,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install build-essential libgtk-3-dev pkg-config libssl-dev libayatana-appindicator3-dev
+          sudo apt-get install build-essential libgtk-3-dev pkg-config libssl-dev libayatana-appindicator3-dev s3cmd
           cargo install cargo-deb
           cargo install cargo-generate-rpm
       - name: Get current date
@@ -24,7 +24,7 @@ jobs:
         run: echo "TODAY_DATE=$(date +'%d %b %Y')" >> $GITHUB_OUTPUT
       # Builds the deb linux package
       - name: Build deb package
-        run: cargo deb
+        run: cargo deb -o stremio-service_amd64.deb
       - name: Upload deb release
         uses: softprops/action-gh-release@v1
         with:
@@ -41,7 +41,7 @@ jobs:
       - name: Strip debug symbols
         run: strip -s target/release/stremio-service
       - name: Build rpm package
-        run: cargo generate-rpm
+        run: cargo generate-rpm -o stremio-service_x86_64.rpm
       - name: Upload rpm to release
         uses: softprops/action-gh-release@v1
         with:
@@ -52,3 +52,13 @@ jobs:
           fail_on_unmatched_files: true
           files: |
             target/generate-rpm/*.rpm
+
+      - name: Upload build artifacts to AWS
+        shell: bash
+        env:
+          AWS_REGION: eu-west-1
+        run: |
+          # deb
+          s3cmd --acl-public --access_key=${{ secrets.AWS_ACCESS_KEY }} --region=$AWS_REGION --secret_key=${{ secrets.AWS_SECRET_KEY }} --force put stremio-service_amd64.deb s3://stremio-artifacts/stremio-service/${{ github.ref_name }}/
+          # rpm
+          s3cmd --acl-public --access_key=${{ secrets.AWS_ACCESS_KEY }} --region=$AWS_REGION --secret_key=${{ secrets.AWS_SECRET_KEY }} --force put stremio-service_x86_64.rpm s3://stremio-artifacts/stremio-service/${{ github.ref_name }}/

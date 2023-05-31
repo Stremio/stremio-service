@@ -17,6 +17,12 @@ jobs:
           toolchain: stable
       - name: Build
         run: cargo build --release --features=bundled
+      - name: Sign executables
+        run: |
+          & 'C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x86\signtool.exe' sign /f "resources\certificates\smartcode-20211118-20241118.pfx" /p ${{ secrets.WIN_CERT_PASSWORD }} /v ".\target\release\stremio-service.exe"
+          & 'C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x86\signtool.exe' sign /f "resources\certificates\smartcode-20211118-20241118.pfx" /p ${{ secrets.WIN_CERT_PASSWORD }} /v ".\resources\bin\windows\node.exe"
+          & 'C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x86\signtool.exe' sign /f "resources\certificates\smartcode-20211118-20241118.pfx" /p ${{ secrets.WIN_CERT_PASSWORD }} /v ".\resources\bin\windows\ffmpeg.exe"
+          & 'C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x86\signtool.exe' sign /f "resources\certificates\smartcode-20211118-20241118.pfx" /p ${{ secrets.WIN_CERT_PASSWORD }} /v ".\resources\bin\windows\ffprobe.exe"
       - name: Zip release for windows
         uses: vimtor/action-zip@v1.1
         with:

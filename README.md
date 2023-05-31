@@ -5,6 +5,18 @@
 - `default` features - none
 - `bundled` - uses binaries location for an installed(and bundled) application.
 
+## Download
+
+You can find the Stremio Service packages in the [releases asset files](https://github.com/Stremio/stremio-service/releases) or by using one of the following urls.
+
+_For `dl.strem.io` urls replace `{VERSION}` with the latest release version of Stremio Service in the format `v*.*.*`._
+
+- MacOS: https://dl.strem.io/stremio-service/{VERSION}/StremioService.dmg
+- Windows: https://dl.strem.io/stremio-service/{VERSION}/StremioServiceSetup.exe
+- Debian: https://dl.strem.io/stremio-service/{VERSION}/stremio-service_amd64.deb
+- Redhat: https://dl.strem.io/stremio-service/{VERSION}/stremio-service_x86_64.rpm
+- Flatpak package: https://flathub.org/apps/com.stremio.Service
+
 ## Development
 
 ```
@@ -136,6 +148,8 @@ cargo macos && create-dmg --overwrite target/macos/*.app target/macos
 ## Releasing new version
 
 The `generate_descriptor.js` script is used to generate new version descriptor and upload it to s3. This script is automatically called in the release workflows for Mac OS and Windows. The default behavior is to find the latest artifacts and generate a release candidate descriptor.
+
+For the Flatpak packages it is also necessary to add the new version and it's date to the [com.stremio.Service.appdata.xml](./flatpak/com.stremio.Service.appdata.xml) file.
 
 ### Quick release example
 

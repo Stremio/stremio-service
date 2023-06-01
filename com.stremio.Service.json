@@ -26,16 +26,16 @@
         },
         "build-commands": [
             "cargo --offline fetch --manifest-path Cargo.toml --verbose",
-            "cargo --offline build --release --features=bundled --verbose"
+            "cargo --offline build --release --features=bundled,flatpak --verbose"
         ],
         "post-install": [
+            "install -Dm755 server.js -t /app/bin/stremio-service/",
             "install -Dm755 ./target/release/stremio-service -t /app/bin/stremio-service/",
             "install -Dm755 ./resources/bin/linux/node -t /app/bin/stremio-service/",
             "install -Dm755 ./resources/bin/linux/ffmpeg -t /app/bin/stremio-service/",
             "install -Dm755 ./resources/bin/linux/ffprobe -t /app/bin/stremio-service/",
-            "install -Dm755 ./resources/bin/linux/server.js -t /app/bin/stremio-service/",
-            "install -Dm644 ./flatpak/com.stremio.Service.desktop /app/share/applications/com.stremio.Service.desktop",
             "install -Dm644 ./resources/com.stremio.service.svg /app/share/icons/hicolor/scalable/apps/com.stremio.Service.svg",
+            "install -Dm644 ./flatpak/com.stremio.Service.desktop /app/share/applications/com.stremio.Service.desktop",
             "install -Dm644 ./flatpak/com.stremio.Service.appdata.xml /app/share/metainfo/com.stremio.Service.appdata.xml"
         ],
         "sources": [
@@ -43,7 +43,8 @@
                 "type": "dir",
                 "path": "."
             },
-            "generated-sources.json"
+            "generated-sources.json",
+            "server-source.json"
         ],
         "modules": [
             "flatpak/shared-modules/libappindicator/libappindicator-gtk3-12.10.json"

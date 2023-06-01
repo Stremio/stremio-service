@@ -3,5 +3,6 @@
 flatpak/build
 flatpak/repo
 generated-sources.json
+server-source.json
 com.stremio.Service.flatpak
 StremioServiceSetup.exe

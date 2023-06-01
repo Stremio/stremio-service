@@ -1,23 +1,13 @@
-#[cfg(any(target_os = "linux"))]
-use std::path::Path;
-use std::{env::consts::OS, error::Error, fs, io::Cursor, path::PathBuf};
+use std::{env::consts::OS, error::Error, fs, path::PathBuf};
 
-use bytes::Bytes;
-use flate2::bufread::GzDecoder;
 use once_cell::sync::Lazy;
 use serde::Deserialize;
-#[cfg(target_os = "linux")]
-use tar::Archive;
 use url::Url;
-use xz::bufread::XzDecoder;
 
 #[cfg(target_os = "windows")]
 use chrono::{Datelike, Local};
 
 static STREMIO_SERVER_URL: Lazy<Url> = Lazy::new(|| "https://dl.strem.io/server/".parse().unwrap());
-
-#[cfg(target_os = "linux")]
-const NODE_LINUX_ARCHIVE: &str = "https://nodejs.org/dist/v18.12.1/node-v18.12.1-linux-x64.tar.xz";
 
 #[derive(Clone, Debug, Deserialize)]
 struct ServerMetadata {
@@ -31,22 +21,6 @@ struct ServerMetadata {
 #[derive(Clone, Debug, Deserialize)]
 struct Metadata {
     server: ServerMetadata,
-}
-
-trait Decoder: std::io::Read {
-    fn new(r: Cursor<Bytes>) -> Self;
-}
-
-impl Decoder for XzDecoder<Cursor<Bytes>> {
-    fn new(r: Cursor<Bytes>) -> Self {
-        XzDecoder::new(r)
-    }
-}
-
-impl Decoder for GzDecoder<Cursor<Bytes>> {
-    fn new(r: Cursor<Bytes>) -> Self {
-        GzDecoder::new(r)
-    }
 }
 
 const SUPPORTED_OS: &[&str] = &["linux", "macos", "windows"];
@@ -64,7 +38,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let current_dir = std::env::current_dir()?;
     let platform_bins = current_dir.join("resources").join("bin").join(OS);
 
-    #[cfg(not(feature = "flatpak"))]
+    #[cfg(not(feature = "offline-build"))]
     {
         let server_js_target = platform_bins.join("server.js");
         // keeps track of the server.js version in order to update it if versions mismatch
@@ -117,16 +91,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    #[cfg(target_os = "linux")]
-    {
-        extract_tar::<XzDecoder<Cursor<Bytes>>>(
-            NODE_LINUX_ARCHIVE,
-            "bin/node",
-            "node",
-            &platform_bins,
-        )?;
-    }
-
     #[cfg(target_os = "windows")]
     {
         let now = Local::now();
@@ -139,30 +103,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         res.set("LegalCopyright", &copyright);
         res.set_icon_with_id("resources/service.ico", "ICON");
         res.compile().unwrap();
-    }
-
-    Ok(())
-}
-
-#[cfg(target_os = "linux")]
-fn extract_tar<D: Decoder>(
-    url: &str,
-    file_path: &str,
-    out_name: &str,
-    out: &Path,
-) -> Result<(), Box<dyn Error>> {
-    let target = out.join(out_name);
-    if !target.exists() {
-        let archive_file = reqwest::blocking::get(url)?.bytes()?;
-        let decoded_stream = D::new(Cursor::new(archive_file));
-        let mut archive = Archive::new(decoded_stream);
-        for entry in archive.entries()? {
-            let mut file = entry?;
-            let path = file.path()?;
-            if path.ends_with(file_path) {
-                file.unpack(target.clone())?;
-            }
-        }
     }
 
     Ok(())

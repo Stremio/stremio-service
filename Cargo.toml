@@ -22,8 +22,8 @@ default = []
 # is locally inside `target/` and binaries paths will be based on
 # the Cargo.toml location.
 bundled = []
-# Only needed when building with flatpak-builder
-flatpak = []
+# Will not download anything while building
+offline-build = []
 
 [dependencies]
 # for MacOS application bundling

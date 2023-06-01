@@ -43,8 +43,8 @@
                 "type": "dir",
                 "path": "."
             },
-            "generated-sources.json",
-            "server-source.json"
+            "flatpak/cargo-sources.json",
+            "flatpak/server-source.json"
         ],
         "modules": [
             "flatpak/shared-modules/libappindicator/libappindicator-gtk3-12.10.json"

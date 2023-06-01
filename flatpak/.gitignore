@@ -1,0 +1,5 @@
+build
+repo
+cargo-sources.json
+server-source.json
+com.stremio.Service.flatpak

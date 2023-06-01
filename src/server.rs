@@ -135,9 +135,9 @@ impl Config {
     /// Returns the ffmpeg binary name (Operating system dependent).
     ///
     /// Supports only 3 OSes:
-    /// - `linux` - returns `ffmpeg-linux` or `ffmpeg` (when `bundled` feature is enabled)
-    /// - `macos` returns `ffmpeg-macos` or `ffmpeg` (when `bundled` feature is enabled)
-    /// - `windows` returns `ffmpeg-windows.exe`
+    /// - `linux` returns `ffmpeg`
+    /// - `macos` returns `ffmpeg`
+    /// - `windows` returns `ffmpeg.exe`
     ///
     /// If no OS is supplied, [`std::env::consts::OS`] is used.
     ///

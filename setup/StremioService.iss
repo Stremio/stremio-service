@@ -1,4 +1,4 @@
-; Copyright (C) 2017-2022 Smart code 203358507
+; Copyright (C) 20172023 Smart code 203358507
 
 #define MyAppName "Stremio Service"
 #define MyAppShortName "StremioService"

@@ -8,13 +8,20 @@
   <url type="homepage">https://stremio.com</url>
   
   <metadata_license>MIT</metadata_license>
-  <project_license>MIT</project_license>
+  <project_license>GPL-2.0</project_license>
+  <content_rating type="oars-1.1" />
   
   <description>
     <p>
       Lets you run Stremio server in the background.
     </p>
   </description>
+
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/Stremio/stremio-service/master/resources/screenshot.png</image>
+    </screenshot>
+  </screenshots>
   
   <launchable type="desktop-id">com.stremio.Service.desktop</launchable>
 

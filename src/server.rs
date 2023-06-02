@@ -71,7 +71,10 @@ impl Config {
 
             let node_exists = node.try_exists().context("stremio runtime").map(|exists| {
                 if !exists {
-                    bail!("stremio runtime not found at: {}", node.display().to_string())
+                    bail!(
+                        "stremio runtime not found at: {}",
+                        node.display().to_string()
+                    )
                 } else {
                     Ok(())
                 }

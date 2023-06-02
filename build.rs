@@ -7,7 +7,7 @@ use url::Url;
 #[cfg(target_os = "windows")]
 use {
     chrono::{Datelike, Local},
-    winres_edit::{Resources, resource_type, Id},
+    winres_edit::{resource_type, Id, Resources},
 };
 
 static STREMIO_SERVER_URL: Lazy<Url> = Lazy::new(|| "https://dl.strem.io/server/".parse().unwrap());
@@ -113,7 +113,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         edit_exe_resources(
             &platform_bins.join("stremio-runtime.exe"),
             &resources.join("runtime.ico"),
-            &runtime_info
+            &runtime_info,
         )?;
 
         let mut res = winres::WindowsResource::new();
@@ -128,7 +128,11 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 
 #[cfg(target_os = "windows")]
-fn edit_exe_resources(file_path: &PathBuf, icon_path: &PathBuf, info: &[(&str, &str)]) -> Result<(), Box<dyn Error>> {
+fn edit_exe_resources(
+    file_path: &PathBuf,
+    icon_path: &PathBuf,
+    info: &[(&str, &str)],
+) -> Result<(), Box<dyn Error>> {
     let icon = std::fs::File::open(icon_path)?;
     let icon_dir = ico::IconDir::read(icon).unwrap();
 
@@ -137,22 +141,19 @@ fn edit_exe_resources(file_path: &PathBuf, icon_path: &PathBuf, info: &[(&str, &
     resources.open()?;
 
     for (i, entry) in icon_dir.entries().iter().enumerate() {
-        resources.find(resource_type::ICON, Id::Integer((i as u16) + 1))
+        resources
+            .find(resource_type::ICON, Id::Integer((i as u16) + 1))
             .expect(&format!("Failed to find icon {}", i))
             .replace(entry.data())?
             .update()?;
     }
 
     match resources.get_version_info() {
-        Ok(version_info) => {
-            match version_info {
-                Some(mut version_info) => {
-                    version_info
-                        .insert_strings(info)
-                        .update()?;
-                },
-                _ => {},
+        Ok(version_info) => match version_info {
+            Some(mut version_info) => {
+                version_info.insert_strings(info).update()?;
             }
+            _ => {}
         },
         Err(_) => eprintln!("Failed to get version info"),
     }

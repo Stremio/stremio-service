@@ -23,6 +23,8 @@ default = []
 # is locally inside `target/` and binaries paths will be based on
 # the Cargo.toml location.
 bundled = []
+# Will not download anything while building
+offline-build = []
 
 [dependencies]
 # for MacOS application bundling

@@ -1,3 +1,4 @@
+# Copyright (C) 2017-2022 Smart code 203358507
 [package]
 name = "stremio-service"
 version = "0.1.6"

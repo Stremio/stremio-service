@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+// Copyright (C) 2017-2022 Smart code 203358507
+
 // This script generates an auto update descriptor for a given tag.
 // It will get the files for the tag, calculate their hashes, and upload
 // the descriptor to S3. In order to run it, you need to have aws cli installed

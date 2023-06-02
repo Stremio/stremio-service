@@ -1,3 +1,4 @@
+// Copyright (C) 2017-2022 Smart code 203358507
 pub const DATA_DIR: &str = ".stremio-service";
 pub const STREMIO_URL: &str = "https://web.stremio.com";
 pub const APP_IDENTIFIER: &str = "com.stremio.service";

@@ -1,3 +1,4 @@
+// Copyright (C) 2017-2022 Smart code 203358507
 #[cfg(any(target_os = "linux"))]
 use std::path::Path;
 use std::{env::consts::OS, error::Error, fs, io::Cursor, path::PathBuf};

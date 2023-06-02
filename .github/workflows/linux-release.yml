@@ -60,6 +60,6 @@ jobs:
           AWS_REGION: eu-west-1
         run: |
           # deb
-          s3cmd --acl-public --access_key=${{ secrets.AWS_ACCESS_KEY }} --region=$AWS_REGION --secret_key=${{ secrets.AWS_SECRET_KEY }} --force put stremio-service_amd64.deb s3://stremio-artifacts/stremio-service/${{ github.ref_name }}/
+          s3cmd --acl-public --access_key=${{ secrets.AWS_ACCESS_KEY }} --region=$AWS_REGION --secret_key=${{ secrets.AWS_SECRET_KEY }} --force put target/debian/stremio-service_amd64.deb s3://stremio-artifacts/stremio-service/${{ github.ref_name }}/
           # rpm
-          s3cmd --acl-public --access_key=${{ secrets.AWS_ACCESS_KEY }} --region=$AWS_REGION --secret_key=${{ secrets.AWS_SECRET_KEY }} --force put stremio-service_x86_64.rpm s3://stremio-artifacts/stremio-service/${{ github.ref_name }}/
+          s3cmd --acl-public --access_key=${{ secrets.AWS_ACCESS_KEY }} --region=$AWS_REGION --secret_key=${{ secrets.AWS_SECRET_KEY }} --force put target/generate-rpm/stremio-service_x86_64.rpm s3://stremio-artifacts/stremio-service/${{ github.ref_name }}/

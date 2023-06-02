@@ -1,3 +1,4 @@
+// Copyright (C) 2017-2023 Smart code 203358507
 use std::{io::Write, path::PathBuf, process::Command};
 
 use anyhow::{anyhow, Context};

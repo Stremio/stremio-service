@@ -1,3 +1,4 @@
+# Copyright (C) 2017-2022 Smart code 203358507
 name: Windows Release
 
 on:
@@ -10,22 +11,32 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Rust setup
-        uses: actions-rs/toolchain@v1
+        uses: actions-rs/toolchain@v1.0.6
         with:
           toolchain: stable
       - name: Build
         run: cargo build --release --features=bundled
+      - name: Sign executables
+        run: |
+          & 'C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x86\signtool.exe' sign /f "resources\certificates\smartcode-20211118-20241118.pfx" /p ${{ secrets.WIN_CERT_PASSWORD }} /v ".\target\release\stremio-service.exe"
+          & 'C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x86\signtool.exe' sign /f "resources\certificates\smartcode-20211118-20241118.pfx" /p ${{ secrets.WIN_CERT_PASSWORD }} /v ".\resources\bin\windows\node.exe"
+          & 'C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x86\signtool.exe' sign /f "resources\certificates\smartcode-20211118-20241118.pfx" /p ${{ secrets.WIN_CERT_PASSWORD }} /v ".\resources\bin\windows\ffmpeg.exe"
+          & 'C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x86\signtool.exe' sign /f "resources\certificates\smartcode-20211118-20241118.pfx" /p ${{ secrets.WIN_CERT_PASSWORD }} /v ".\resources\bin\windows\ffprobe.exe"
       - name: Zip release for windows
-        uses: vimtor/action-zip@v1
+        uses: vimtor/action-zip@v1.1
         with:
           # todo: add license
-          files: resources/bin/ffmpeg-windows.exe resources/bin/ffprobe.exe resources/bin/stremio-runtime.exe target/release/updater.exe target/release/stremio-service.exe resources/bin/server.js
+          files: resources/bin/windows/ffmpeg.exe resources/bin/windows/ffprobe.exe resources/bin/windows/stremio-runtime.exe target/release/stremio-service.exe resources/bin/windows/server.js
           dest: stremio-service-windows.zip
       - name: Installer
         run: |
           & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' 'setup\StremioService.iss'
+
+      - name: Sign Installer
+        run: |
+          & 'C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x86\signtool.exe' sign /f "resources\certificates\smartcode-20211118-20241118.pfx" /p ${{ secrets.WIN_CERT_PASSWORD }} /v "StremioServiceSetup.exe"
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -38,11 +49,20 @@ jobs:
         run: |
           aws s3 cp --acl public-read StremioServiceSetup.exe s3://stremio-artifacts/stremio-service/${{ github.ref_name }}/
 
-      - name: Upload windows release
-        uses: svenstaro/upload-release-action@v1-release
+      - name: Generate RC descriptor
+        run: |
+          node ./generate_descriptor.js --wait-all --tag=${{ github.ref_name }}
+      - name: Get current date
+        id: date
+        run: echo "TODAY_DATE=$(date +'%d %b %Y')" >> $GITHUB_OUTPUT
+      - name: Upload dmg and zip file to release
+        uses: softprops/action-gh-release@v1
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: stremio-service-windows.zip
-          asset_name: stremio-service-windows.zip
-          tag: ${{ github.ref }}
-          overwrite: true
+          # Use the same name as all releases!
+          name: Stremio Service ${{ github.ref_name }} (${{ steps.date.outputs.TODAY_DATE }})
+          draft: true
+          prerelease: false
+          fail_on_unmatched_files: true
+          files: |
+            stremio-service-windows.zip
+            StremioServiceSetup.exe

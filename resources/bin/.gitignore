@@ -1,4 +1,4 @@
 !.gitignore
 !ffmpeg-*
-stremio-runtime*
-*.js
+server.js
+server_version.txt

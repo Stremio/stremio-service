@@ -1,71 +1,102 @@
-use std::{error::Error, fs, io::Cursor, path::Path};
+use std::{env::consts::OS, error::Error, fs, path::PathBuf};
 
-use bytes::Bytes;
+use once_cell::sync::Lazy;
+use serde::Deserialize;
+use url::Url;
 
 #[cfg(target_os = "windows")]
 use {
+    chrono::{Datelike, Local},
     winres_edit::{Resources, resource_type, Id},
-    std::path::PathBuf,
 };
 
-#[cfg(any(target_os = "linux", target_os = "macos"))]
-use {
-    tar::Archive,
-    xz::bufread::XzDecoder,
-    flate2::bufread::GzDecoder,
-};
+static STREMIO_SERVER_URL: Lazy<Url> = Lazy::new(|| "https://dl.strem.io/server/".parse().unwrap());
 
-#[cfg(target_os = "windows")]
-use chrono::{Datelike, Local};
-
-const STREMIO_SERVER: &str = "https://dl.strem.io/four/master/server.js";
-#[cfg(target_os = "windows")]
-const NODE_WINDOWS_ARCHIVE: &str = "https://nodejs.org/dist/v18.12.1/node-v18.12.1-win-x64.zip";
-#[cfg(target_os = "linux")]
-const NODE_LINUX_ARCHIVE: &str = "https://nodejs.org/dist/v18.12.1/node-v18.12.1-linux-x64.tar.xz";
-#[cfg(target_os = "macos")]
-const NODE_MACOS_ARCHIVE: &str = "https://nodejs.org/dist/v18.12.1/node-v18.12.1-darwin-x64.tar.gz";
-
-trait Decoder: std::io::Read {
-    fn new(r: Cursor<Bytes>) -> Self;
+#[derive(Clone, Debug, Deserialize)]
+struct ServerMetadata {
+    /// The server.js version to be fetched from `dl.strem.io`.
+    ///
+    /// It can be semantic versioning or other
+    version: String,
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos"))]
-impl Decoder for XzDecoder<Cursor<Bytes>> {
-    fn new(r: Cursor<Bytes>) -> Self {
-        XzDecoder::new(r)
-    }
+/// Cargo.toml metadata which we're interested in
+#[derive(Clone, Debug, Deserialize)]
+struct Metadata {
+    server: ServerMetadata,
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos"))]
-impl Decoder for GzDecoder<Cursor<Bytes>> {
-    fn new(r: Cursor<Bytes>) -> Self {
-        GzDecoder::new(r)
-    }
-}
+const SUPPORTED_OS: &[&str] = &["linux", "macos", "windows"];
 
 fn main() -> Result<(), Box<dyn Error>> {
     println!("cargo:rerun-if-changed=src/");
 
-    let current_dir = std::env::current_dir()?;
-    let resource_dir = current_dir.join("resources");
-    let resource_bin_dir = resource_dir.join("bin");
+    if !SUPPORTED_OS.contains(&OS) {
+        panic!(
+            "OS {} not supported, supported OSes are: {:?}",
+            OS, SUPPORTED_OS
+        )
+    }
 
-    let server_js_target = resource_bin_dir.join("server.js");
-    if !server_js_target.exists() {
-        let server_js_file = reqwest::blocking::get(STREMIO_SERVER)?.bytes()?;
-        fs::write(resource_bin_dir.join("server.js"), server_js_file)?;
+    let current_dir = std::env::current_dir()?;
+    let resources = current_dir.join("resources");
+    let platform_bins = resources.join("bin").join(OS);
+
+    #[cfg(not(feature = "offline-build"))]
+    {
+        let server_js_target = platform_bins.join("server.js");
+        // keeps track of the server.js version in order to update it if versions mismatch
+        let server_js_version_file = platform_bins.join("server_version.txt");
+
+        let manifest_version = {
+            let manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml");
+            let manifest = cargo_toml::Manifest::<Metadata>::from_path_with_metadata(manifest_path)
+                .expect("Cannot read the manifest metadata");
+
+            let server_metadata = manifest
+                .package
+                .expect("Failed to parse package")
+                .metadata
+                .expect("Failed to parse manifest.package.metadata")
+                .server;
+
+            server_metadata.version
+        };
+
+        let download_server_js = || -> Result<(), Box<dyn Error>> {
+            let version_url = STREMIO_SERVER_URL
+                .clone()
+                .join(&format!("{manifest_version}/desktop/server.js"))
+                .expect("Should never fail");
+
+            let server_js_file = reqwest::blocking::get(version_url)?
+                .error_for_status()?
+                .bytes()?;
+
+            fs::write(&server_js_target, server_js_file)?;
+            // replace content in the version file
+            fs::write(&server_js_version_file, &manifest_version)?;
+            Ok(())
+        };
+
+        match (
+            server_js_target.exists(),
+            fs::read_to_string(&server_js_version_file).ok(),
+        ) {
+            // if server.js does not exist (no matter if the version file exist)
+            // or if the server.js file exist but we don't have a version file.
+            (false, _) | (true, None) => download_server_js()?,
+            (true, Some(version)) => {
+                if manifest_version != version {
+                    download_server_js()?
+                }
+                // else do nothing, we have the same version
+            }
+        }
     }
 
     #[cfg(target_os = "windows")]
     {
-        extract_zip(
-            NODE_WINDOWS_ARCHIVE,
-            "node.exe",
-            "stremio-runtime.exe",
-            &resource_bin_dir
-        )?;
-
         let now = Local::now();
         let copyright = format!("Copyright © {} Smart Code OOD", now.year());
         let description = std::env::var("CARGO_PKG_DESCRIPTION").unwrap();
@@ -80,8 +111,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         ];
 
         edit_exe_resources(
-            &resource_bin_dir.join("stremio-runtime.exe"),
-            &resource_dir.join("runtime.ico"),
+            &platform_bins.join("stremio-runtime.exe"),
+            &resources.join("runtime.ico"),
             &runtime_info
         )?;
 
@@ -91,26 +122,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         res.set("LegalCopyright", &copyright);
         res.set_icon_with_id("resources/service.ico", "ICON");
         res.compile().unwrap();
-    }
-
-    #[cfg(target_os = "linux")]
-    {
-        extract_tar::<XzDecoder<Cursor<Bytes>>>(
-            NODE_LINUX_ARCHIVE,
-            "bin/node",
-            "stremio-runtime",
-            &resource_bin_dir,
-        )?;
-    }
-
-    #[cfg(target_os = "macos")]
-    {
-        extract_tar::<GzDecoder<Cursor<Bytes>>>(
-            NODE_MACOS_ARCHIVE,
-            "bin/node",
-            "stremio-runtime",
-            &resource_bin_dir,
-        )?;
     }
 
     Ok(())
@@ -147,46 +158,6 @@ fn edit_exe_resources(file_path: &PathBuf, icon_path: &PathBuf, info: &[(&str, &
     }
 
     resources.close();
-
-    Ok(())
-}
-
-#[cfg(target_os = "windows")]
-fn extract_zip(url: &str, file_path: &str, out_name: &str, out: &Path) -> Result<(), Box<dyn Error>> {
-    let target = out.join(out_name);
-    if !target.exists() {
-        let tmp_dir = PathBuf::from(".tmp");
-        fs::create_dir_all(tmp_dir.clone())?;
-
-        let archive_file = reqwest::blocking::get(url)?.bytes()?;
-        zip_extract::extract(Cursor::new(archive_file), &tmp_dir, true)?;
-        fs::copy(tmp_dir.join(file_path), target)?;
-        fs::remove_dir_all(tmp_dir)?;
-    }
-
-    Ok(())
-}
-
-#[cfg(any(target_os = "linux", target_os = "macos"))]
-fn extract_tar<D: Decoder>(
-    url: &str,
-    file_path: &str,
-    out_name: &str,
-    out: &Path,
-) -> Result<(), Box<dyn Error>> {
-    let target = out.join(out_name);
-    if !target.exists() {
-        let archive_file = reqwest::blocking::get(url)?.bytes()?;
-        let decoded_stream = D::new(Cursor::new(archive_file));
-        let mut archive = Archive::new(decoded_stream);
-        for entry in archive.entries()? {
-            let mut file = entry?;
-            let path = file.path()?;
-            if path.ends_with(file_path) {
-                file.unpack(target.clone())?;
-            }
-        }
-    }
 
     Ok(())
 }

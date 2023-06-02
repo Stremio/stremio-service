@@ -1,8 +1,10 @@
+; Copyright (C) 2017-2023 Smart code 203358507
+
 #define MyAppName "Stremio Service"
 #define MyAppShortName "StremioService"
 #define MyAppExeName "stremio-service.exe"
 #define MyAppBinLocation SourcePath + "..\target\release\"
-#define MyAppResBinLocation SourcePath + "..\resources\bin\"
+#define MyAppResBinLocation SourcePath + "..\resources\bin\windows\"
 #define MyAppExeLocation MyAppBinLocation + MyAppExeName
 #define MyAppVersion() GetVersionComponents(MyAppExeLocation, Local[0], Local[1], Local[2], Local[3]), \
   Str(Local[0]) + "." + Str(Local[1]) + "." + Str(Local[2])
@@ -144,19 +146,26 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"
 [Files]
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 Source: "{#MyAppExeLocation}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#MyAppBinLocation}updater.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#MyAppResBinLocation}ffmpeg-windows.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#MyAppResBinLocation}ffmpeg.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyAppResBinLocation}ffprobe.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyAppResBinLocation}stremio-runtime.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyAppResBinLocation}server.js"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#MyAppResBinLocation}avcodec-58.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#MyAppResBinLocation}avdevice-58.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#MyAppResBinLocation}avfilter-7.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#MyAppResBinLocation}avformat-58.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#MyAppResBinLocation}avutil-56.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#MyAppResBinLocation}postproc-55.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#MyAppResBinLocation}swresample-3.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#MyAppResBinLocation}swscale-5.dll"; DestDir: "{app}"; Flags: ignoreversion
 
 [Registry]
 
 ; stremio: protocol
-Root: HKA; Subkey: "Software\Classes\stremio"; ValueType: string; ValueName: ""; ValueData: "URL:Stremio Protocol"; Flags: uninsdeletekey
-Root: HKA; Subkey: "Software\Classes\stremio"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""; Flags: uninsdeletekey
-Root: HKA; Subkey: "Software\Classes\stremio\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName},0"; Flags: uninsdeletekey
-Root: HKA; Subkey: "Software\Classes\stremio\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""-o"" ""%1"""; Flags: uninsdeletekey
+Root: HKA; Subkey: "Software\Classes\StremioService"; ValueType: string; ValueName: ""; ValueData: "URL:Stremio Protocol"; Flags: uninsdeletekey
+Root: HKA; Subkey: "Software\Classes\StremioService"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""; Flags: uninsdeletekey
+Root: HKA; Subkey: "Software\Classes\StremioService\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName},0"; Flags: uninsdeletekey
+Root: HKA; Subkey: "Software\Classes\StremioService\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""-o"" ""%1"""; Flags: uninsdeletekey
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

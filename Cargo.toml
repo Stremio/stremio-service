@@ -1,15 +1,19 @@
+# Copyright (C) 2017-2023 Smart code 203358507
 [package]
 name = "stremio-service"
-version = "0.1.0"
+version = "0.1.6"
 edition = "2021"
 authors = ["Stremio"]
-description = "Freedom to Stream"
+description = "Stremio service - Freedom to Stream"
 license = "MIT"
 homepage = "https://stremio.com"
 repository = "https://github.com/Stremio/stremio-service/"
 readme = "README.md"
 
 default-run = "stremio-service"
+
+[package.metadata.server]
+version = "v4.20.2"
 
 [features]
 default = []
@@ -19,51 +23,56 @@ default = []
 # is locally inside `target/` and binaries paths will be based on
 # the Cargo.toml location.
 bundled = []
+# Will not download anything while building
+offline-build = []
 
 [dependencies]
 # for MacOS application bundling
-cargo_toml = "0.14.0"
+cargo_toml = "0.15"
 
 # CLI
-clap = { version = "4.0.22", features = ["derive"] }
+clap = { version = "4.0", features = ["derive"] }
 
 # Errors
 anyhow = "1"
 
 # Async executor
-tokio = { version = "1.21.2", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.27", features = ["fs", "macros", "rt-multi-thread"] }
 
 # Logging
 env_logger = "0.10"
-log = "0.4.17"
+log = "0.4"
 
 # Application window manager
-tao = { version = "0.15.3", features = ["tray"] }
+tao = { version = "0.19", features = ["tray"] }
 
 # Home dir
-dirs = "4.0.0"
+dirs = "5.0"
 
-fslock = "0.2.1"
-image = "0.24.4"
+fslock = "0.2"
+image = "0.24"
 once_cell = "1.16"
 
-# used for updater dialog box
-native-dialog = "0.6.3"
-# used for updater
-octocrab = "0.18"
 # Updater
-semver = "1.0.14"
+semver = "1.0"
 
 # Open default app
-open = "3.0.3"
+open = "4.1"
 # http calls
-reqwest = "0.11.12"
+reqwest = { version = "0.11", features = ["stream", "json"] }
 # embedding files in binary
-rust-embed = "6.4.2"
+rust-embed = "6.4"
 serde = { version = "1", features = ["derive"] }
+futures-util = "0.3"
+serde_json = "1"
 
-urlencoding = "2.1.2"
-zip-extract = "0.1.1"
+sha2 = "0.10"
+hex = "0.4"
+rand = "0.8"
+url = { version = "2.3", features = ["serde"] }
+
+urlencoding = "2.1"
+zip-extract = "0.1"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # MacOS Apple Events handling
@@ -72,16 +81,29 @@ fruitbasket = "0.10"
 [target.'cfg(target_os = "windows")'.build-dependencies]
 winres = "0.1"
 winres-edit = "0.1.0"
-chrono = "0.4.22"
+chrono = "0.4"
 ico = "0.3.0"
 
 [build-dependencies]
-bytes = "1.0.1"
-flate2 = "1.0.25"
-reqwest = { version = "0.11.12", features = ["blocking"] }
-tar = "0.4.38"
+bytes = "1.0"
+flate2 = "1.0"
+reqwest = { version = "0.11", features = ["blocking"] }
+tar = "0.4"
 xz = "0.1.0"
-zip-extract = "0.1.1"
+zip-extract = "0.1"
+
+url = { version = "2.3" }
+once_cell = "1.16"
+
+serde = "1"
+
+# For getting the Server.js version from this Cargo.toml file
+cargo_toml = "0.15"
+
+[dev-dependencies]
+walkdir = "2.3.3"
+regex = "1.8.3"
+chrono = "0.4"
 
 [profile.release]
 opt-level = 3
@@ -89,16 +111,20 @@ lto = true
 strip = "debuginfo"
 
 [package.metadata.deb]
-copyright = "© 2022 Smart Code OOD"
+copyright = "© 2023 Smart Code OOD"
 extended-description = "Media Center"
+# depends = "$auto, node (>=14.21.1), ffprobe (>=4.2.7)"
 depends = "$auto"
 section = "Stremio;Media;Play;"
 priority = "optional"
 assets = [
     ["target/release/stremio-service", "/usr/bin/stremio-service/stremio-service", "755"],
-    ["resources/bin/stremio-runtime", "/usr/bin/stremio-service/stremio-runtime", "755"],
-    ["resources/bin/server.js", "/usr/bin/stremio-service/server.js", "755"],
-    ["resources/bin/ffmpeg-linux", "/usr/bin/stremio-service/ffmpeg-linux", "755"],
+    # We use a specific version of ffmpeg-jellyfin
+    ["resources/bin/linux/ffmpeg", "/usr/bin/stremio-service/ffmpeg", "755"],
+    # Should be possible to remove with `depends` but it shows an error at the moment.
+    ["resources/bin/linux/stremio-runtime", "/usr/bin/stremio-service/stremio-runtime", "755"],
+    ["resources/bin/linux/ffprobe", "/usr/bin/stremio-service/ffprobe", "755"],
+    ["resources/bin/linux/server.js", "/usr/bin/stremio-service/server.js", "755"],
     ["resources/com.stremio.service.desktop", "/usr/share/applications/com.stremio.service.desktop", "644"],
     ["resources/com.stremio.service.svg", "/usr/share/icons/hicolor/scalable/apps/com.stremio.service.svg", "644"],
 ]
@@ -108,29 +134,34 @@ features = ["bundled"]
 # post_install_script = "gnome_version=$(gnome-shell --version  | awk '{print $NF}') && echo https://extensions.gnome.org/extension-data/appindicatorsupportrgcjonas.gmail.com.GNOME_VERSION.shell-extension.zip | sed -e s/GNOME_VERSION/$gnome_version/g"
 assets = [
     { source = "target/release/stremio-service", dest = "/usr/bin/stremio-service/stremio-service", mode = "755" },
-    { source = "resources/bin/stremio-runtime", dest = "/usr/bin/stremio-service/stremio-runtime", mode = "755" },
-    { source = "resources/bin/ffmpeg-linux", dest = "/usr/bin/stremio-service/ffmpeg-linux", mode = "755" },
-    { source = "resources/bin/server.js", dest = "/usr/bin/stremio-service/server.js", mode = "755" },
+    { source = "resources/bin/linux/ffmpeg", dest = "/usr/bin/stremio-service/bin/ffmpeg", mode = "755" },
+    # Should be possible to remove with `depends` but it shows an error at the moment.
+    { source = "resources/bin/linux/stremio-runtime", dest = "/usr/bin/stremio-service/bin/stremio-runtime", mode = "755" },
+    { source = "resources/bin/linux/ffprobe", dest = "/usr/bin/stremio-service/bin/ffprobe", mode = "755" },
+    { source = "resources/bin/linux/server.js", dest = "/usr/bin/stremio-service/server.js", mode = "755" },
     { source = "resources/com.stremio.service.desktop", dest = "/usr/share/applications/com.stremio.service.desktop", mode = "644" },
     { source = "resources/com.stremio.service.svg", dest = "/usr/share/icons/hicolor/scalable/apps/com.stremio.service.svg", mode = "644" },
 ]
+# depends = "$auto, node (>=14.21.1), ffprobe (>=4.2.7)"
 features = ["bundled"]
 
 [package.metadata.generate-rpm.requires]
 libappindicator-gtk3 = "*"
+# node = ">=14.21.1"
+# ffprobe = ">=4.2.7"
 
 [package.metadata.macos]
 name = "StremioService"
 display_name = "Stremio Service"
 identifier = "com.stremio.service"
 icon = ["resources/service.icns", "StremioService.icns"]
-copyright = "Copyright © 2022 Smart Code OOD"
+copyright = "Copyright © 2023 Smart Code OOD"
 url_scheme = "stremio"
 executable = "stremio-service"
 bins = [
     ["target/release/stremio-service", "stremio-service"],
-    ["target/release/updater", "updater"],
-    ["resources/bin/stremio-runtime", "stremio-runtime"],
-    ["resources/bin/server.js", "server.js"],
-    ["resources/bin/ffmpeg-macos", "ffmpeg-macos"]
+    ["resources/bin/macos/stremio-runtime", "stremio-runtime"],
+    ["resources/bin/macos/server.js", "server.js"],
+    ["resources/bin/macos/ffmpeg", "ffmpeg"],
+    ["resources/bin/macos/ffprobe", "ffprobe"]
 ]

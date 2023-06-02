@@ -98,6 +98,11 @@ serde = "1"
 # For getting the Server.js version from this Cargo.toml file
 cargo_toml = "0.15"
 
+[dev-dependencies]
+walkdir = "2.3.3"
+regex = "1.8.3"
+chrono = "0.4"
+
 [profile.release]
 opt-level = 3
 lto = true

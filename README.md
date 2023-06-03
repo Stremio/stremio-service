@@ -223,3 +223,7 @@ The hash for StremioServiceSetup.exe is <exe sha256 hash>
 ```
 
 If the `--quiet` flag is used together with `--dry-run` only the descriptor is printed to `STDOUT`. In case of error the error is printed to `STDERR` and `STDOUT` is blank.
+
+## License
+
+GPL-2.0 [LICENSE.md](LICENSE.md)

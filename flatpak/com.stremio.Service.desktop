@@ -1,11 +1,11 @@
 [Desktop Entry]
 Name=Stremio Service
 Comment=Freedom To Stream
-Exec=/app/bin/stremio-service/stremio-service -o '%u'
+Exec=sh -c "/app/bin/stremio-service/stremio-service -o '%u'"
 MimeType=x-scheme-handler/stremio;
 Terminal=false
 Type=Application
-Categories=Utility;Video;Player;
+Categories=Utility;AudioVideo;Video;Player;
 Keywords=Stremio;Media;Play;
 StartupNotify=true
 Icon=com.stremio.Service

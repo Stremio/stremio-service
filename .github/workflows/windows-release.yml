@@ -1,3 +1,4 @@
+# Copyright (C) 2017-2022 Smart code 203358507
 name: Windows Release
 
 on:
@@ -26,8 +27,7 @@ jobs:
       - name: Zip release for windows
         uses: vimtor/action-zip@v1.1
         with:
-          # todo: add license
-          files: resources/bin/windows/ffmpeg.exe resources/bin/windows/ffprobe.exe resources/bin/windows/node.exe target/release/stremio-service.exe resources/bin/windows/server.js
+          files: resources/bin/windows/ffmpeg.exe resources/bin/windows/ffprobe.exe resources/bin/windows/node.exe target/release/stremio-service.exe resources/bin/windows/server.js LICENSE.md
           dest: stremio-service-windows.zip
       - name: Installer
         run: |

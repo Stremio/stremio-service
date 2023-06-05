@@ -1,3 +1,4 @@
+# Copyright (C) 2017-2022 Smart code 203358507
 name: MacOS Release
 
 on:
@@ -88,8 +89,7 @@ jobs:
       - name: Zip release for macos
         uses: vimtor/action-zip@v1.1
         with:
-          # todo: add license
-          files: resources/bin/macos/ffmpeg resources/bin/macos/ffprobe resources/bin/macos/node target/release/stremio-service resources/bin/macos/server.js
+          files: resources/bin/macos/ffmpeg resources/bin/macos/ffprobe resources/bin/macos/node target/release/stremio-service resources/bin/macos/server.js LICENSE.md
           dest: stremio-service-macos.zip
       - name: Get current date
         id: date

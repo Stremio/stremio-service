@@ -45,7 +45,7 @@ env_logger = "0.10"
 log = "0.4"
 
 # Application window manager
-tao = { version = "0.19", features = ["tray"] }
+tao = { version = "0.20", features = ["tray"] }
 
 # Home dir
 dirs = "5.0"

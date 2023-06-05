@@ -3,6 +3,7 @@
 #define MyAppName "Stremio Service"
 #define MyAppShortName "StremioService"
 #define MyAppExeName "stremio-service.exe"
+#define MyAppRoot SourcePath + "..\"
 #define MyAppBinLocation SourcePath + "..\target\release\"
 #define MyAppResBinLocation SourcePath + "..\resources\bin\windows\"
 #define MyAppExeLocation MyAppBinLocation + MyAppExeName
@@ -146,6 +147,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"
 [Files]
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 Source: "{#MyAppExeLocation}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#MyAppRoot}LICENSE.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyAppResBinLocation}ffmpeg.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyAppResBinLocation}ffprobe.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyAppResBinLocation}stremio-runtime.exe"; DestDir: "{app}"; Flags: ignoreversion

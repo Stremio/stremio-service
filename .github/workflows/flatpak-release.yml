@@ -27,8 +27,8 @@ jobs:
           sudo apt-get update
           sudo apt-get -y install flatpak-builder
           sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-          sudo flatpak install -y org.gnome.Sdk//43
-          sudo flatpak install -y org.gnome.Platform//43
+          sudo flatpak install -y org.gnome.Sdk//44
+          sudo flatpak install -y org.gnome.Platform//44
           sudo flatpak install -y org.freedesktop.Sdk.Extension.rust-stable//22.08
       - name: Setup python
         uses: actions/setup-python@v4

@@ -5,7 +5,7 @@ version = "0.1.6"
 edition = "2021"
 authors = ["Stremio"]
 description = "Stremio service - Freedom to Stream"
-license = "MIT"
+license = "GPL-2.0"
 homepage = "https://stremio.com"
 repository = "https://github.com/Stremio/stremio-service/"
 readme = "README.md"
@@ -125,6 +125,7 @@ assets = [
     ["resources/bin/linux/stremio-runtime", "/usr/bin/stremio-service/stremio-runtime", "755"],
     ["resources/bin/linux/ffprobe", "/usr/bin/stremio-service/ffprobe", "755"],
     ["resources/bin/linux/server.js", "/usr/bin/stremio-service/server.js", "755"],
+    ["LICENSE.md", "/usr/bin/stremio-service/LICENSE.md", "644"],
     ["resources/com.stremio.service.desktop", "/usr/share/applications/com.stremio.service.desktop", "644"],
     ["resources/com.stremio.service.svg", "/usr/share/icons/hicolor/scalable/apps/com.stremio.service.svg", "644"],
 ]
@@ -139,6 +140,7 @@ assets = [
     { source = "resources/bin/linux/stremio-runtime", dest = "/usr/bin/stremio-service/bin/stremio-runtime", mode = "755" },
     { source = "resources/bin/linux/ffprobe", dest = "/usr/bin/stremio-service/bin/ffprobe", mode = "755" },
     { source = "resources/bin/linux/server.js", dest = "/usr/bin/stremio-service/server.js", mode = "755" },
+    { source = "LICENSE.md", dest = "/usr/bin/stremio-service/LICENSE.md", mode = "644" },
     { source = "resources/com.stremio.service.desktop", dest = "/usr/share/applications/com.stremio.service.desktop", mode = "644" },
     { source = "resources/com.stremio.service.svg", dest = "/usr/share/icons/hicolor/scalable/apps/com.stremio.service.svg", mode = "644" },
 ]
@@ -163,5 +165,6 @@ bins = [
     ["resources/bin/macos/stremio-runtime", "stremio-runtime"],
     ["resources/bin/macos/server.js", "server.js"],
     ["resources/bin/macos/ffmpeg", "ffmpeg"],
-    ["resources/bin/macos/ffprobe", "ffprobe"]
+    ["resources/bin/macos/ffprobe", "ffprobe"],
+    ["LICENSE.md", "LICENSE.md"]
 ]

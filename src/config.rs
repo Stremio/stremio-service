@@ -1,3 +1,5 @@
+// Copyright (C) 2017-2023 Smart code 203358507
+
 use once_cell::sync::Lazy;
 use url::Url;
 

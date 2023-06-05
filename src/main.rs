@@ -1,3 +1,5 @@
+// Copyright (C) 2017-2023 Smart code 203358507
+
 #![cfg_attr(
     all(target_os = "windows", feature = "bundled"),
     windows_subsystem = "windows"

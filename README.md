@@ -5,6 +5,18 @@
 - `default` features - none
 - `bundled` - uses binaries location for an installed(and bundled) application.
 
+## Download
+
+You can find the Stremio Service packages in the [releases asset files](https://github.com/Stremio/stremio-service/releases) or by using one of the following urls.
+
+_For `dl.strem.io` urls replace `{VERSION}` with the latest release version of Stremio Service in the format `v*.*.*`._
+
+- MacOS: https://dl.strem.io/stremio-service/{VERSION}/StremioService.dmg
+- Windows: https://dl.strem.io/stremio-service/{VERSION}/StremioServiceSetup.exe
+- Debian: https://dl.strem.io/stremio-service/{VERSION}/stremio-service_amd64.deb
+- Redhat: https://dl.strem.io/stremio-service/{VERSION}/stremio-service_x86_64.rpm
+- Flatpak package: https://flathub.org/apps/com.stremio.Service
+
 ## Development
 
 ```
@@ -135,6 +147,25 @@ cargo macos && create-dmg --overwrite target/macos/*.app target/macos
 
 ## Releasing new version
 
+### Release
+
+1. Bump version and update Flatpak
+- Bump version in `Cargo.toml`
+- Flatpak packages - necessary to add the new version and it's date to the [com.stremio.Service.appdata.xml](./flatpak/com.stremio.Service.appdata.xml) file.
+- Commit `Cargo.toml`, `Cargo.lock` and `flatpak/com.stremio.Service.appdata.xml`.
+
+2. Make a new tag
+
+`git tag -a v0.XX.XX -m "Service v0.XX.XX"`
+
+3. Push it to the repo
+
+`git push -u origin v0.XX.XX`
+
+4. The [`release` workflow](./.github/workflows/release.yml) will be triggered
+
+### Manual
+
 The `generate_descriptor.js` script is used to generate new version descriptor and upload it to s3. This script is automatically called in the release workflows for Mac OS and Windows. The default behavior is to find the latest artifacts and generate a release candidate descriptor.
 
 ### Quick release example
@@ -192,3 +223,7 @@ The hash for StremioServiceSetup.exe is <exe sha256 hash>
 ```
 
 If the `--quiet` flag is used together with `--dry-run` only the descriptor is printed to `STDOUT`. In case of error the error is printed to `STDERR` and `STDOUT` is blank.
+
+## License
+
+GPL-2.0 [LICENSE.md](LICENSE.md)

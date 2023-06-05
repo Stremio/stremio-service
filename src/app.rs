@@ -1,3 +1,5 @@
+// Copyright (C) 2017-2023 Smart code 203358507
+
 #[cfg(all(feature = "bundled", any(target_os = "linux", target_os = "macos")))]
 use std::path::Path;
 use std::{fmt::Display, path::PathBuf, str::FromStr, time::Duration};

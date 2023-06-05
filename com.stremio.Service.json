@@ -1,7 +1,7 @@
 {
     "app-id": "com.stremio.Service",
     "runtime": "org.gnome.Platform",
-    "runtime-version": "43",
+    "runtime-version": "44",
     "sdk": "org.gnome.Sdk",
     "sdk-extensions": ["org.freedesktop.Sdk.Extension.rust-stable"],
     "command": "/app/bin/stremio-service/stremio-service",
@@ -26,15 +26,17 @@
         },
         "build-commands": [
             "cargo --offline fetch --manifest-path Cargo.toml --verbose",
-            "cargo --offline build --release --verbose"
+            "cargo --offline build --release --features=bundled,offline-build --verbose"
         ],
         "post-install": [
+            "install -Dm755 server.js -t /app/bin/stremio-service/",
             "install -Dm755 ./target/release/stremio-service -t /app/bin/stremio-service/",
             "install -Dm755 ./resources/bin/linux/node -t /app/bin/stremio-service/",
             "install -Dm755 ./resources/bin/linux/ffmpeg -t /app/bin/stremio-service/",
-            "install -Dm755 ./resources/bin/linux/server.js -t /app/bin/stremio-service/",
-            "install -Dm644 ./flatpak/com.stremio.Service.desktop /app/share/applications/com.stremio.Service.desktop",
+            "install -Dm755 ./resources/bin/linux/ffprobe -t /app/bin/stremio-service/",
+            "install -Dm644 ./LICENSE.md -t /app/bin/stremio-service/",
             "install -Dm644 ./resources/com.stremio.service.svg /app/share/icons/hicolor/scalable/apps/com.stremio.Service.svg",
+            "install -Dm644 ./flatpak/com.stremio.Service.desktop /app/share/applications/com.stremio.Service.desktop",
             "install -Dm644 ./flatpak/com.stremio.Service.appdata.xml /app/share/metainfo/com.stremio.Service.appdata.xml"
         ],
         "sources": [
@@ -42,7 +44,8 @@
                 "type": "dir",
                 "path": "."
             },
-            "generated-sources.json"
+            "flatpak/cargo-sources.json",
+            "flatpak/server-source.json"
         ],
         "modules": [
             "flatpak/shared-modules/libappindicator/libappindicator-gtk3-12.10.json"

@@ -1,3 +1,5 @@
+// Copyright (C) 2017-2023 Smart code 203358507
+
 use std::{path::PathBuf, process::Stdio, sync::Arc};
 
 use anyhow::{anyhow, bail, Context, Error};

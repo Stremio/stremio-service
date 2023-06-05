@@ -1,10 +1,11 @@
+# Copyright (C) 2017-2023 Smart code 203358507
 [package]
 name = "stremio-service"
-version = "0.1.2"
+version = "0.1.6"
 edition = "2021"
 authors = ["Stremio"]
 description = "Stremio service - Freedom to Stream"
-license = "MIT"
+license = "GPL-2.0"
 homepage = "https://stremio.com"
 repository = "https://github.com/Stremio/stremio-service/"
 readme = "README.md"
@@ -12,7 +13,7 @@ readme = "README.md"
 default-run = "stremio-service"
 
 [package.metadata.server]
-version = "v4.20.0"
+version = "v4.20.2"
 
 [features]
 default = []
@@ -22,6 +23,8 @@ default = []
 # is locally inside `target/` and binaries paths will be based on
 # the Cargo.toml location.
 bundled = []
+# Will not download anything while building
+offline-build = []
 
 [dependencies]
 # for MacOS application bundling
@@ -97,13 +100,18 @@ serde = "1"
 # For getting the Server.js version from this Cargo.toml file
 cargo_toml = "0.15"
 
+[dev-dependencies]
+walkdir = "2.3.3"
+regex = "1.8.3"
+chrono = "0.4"
+
 [profile.release]
 opt-level = 3
 lto = true
 strip = "debuginfo"
 
 [package.metadata.deb]
-copyright = "© 2022 Smart Code OOD"
+copyright = "© 2023 Smart Code OOD"
 extended-description = "Media Center"
 # depends = "$auto, node (>=14.21.1), ffprobe (>=4.2.7)"
 depends = "$auto"
@@ -117,6 +125,7 @@ assets = [
     ["resources/bin/linux/node", "/usr/bin/stremio-service/node", "755"],
     ["resources/bin/linux/ffprobe", "/usr/bin/stremio-service/ffprobe", "755"],
     ["resources/bin/linux/server.js", "/usr/bin/stremio-service/server.js", "755"],
+    ["LICENSE.md", "/usr/bin/stremio-service/LICENSE.md", "644"],
     ["resources/com.stremio.service.desktop", "/usr/share/applications/com.stremio.service.desktop", "644"],
     ["resources/com.stremio.service.svg", "/usr/share/icons/hicolor/scalable/apps/com.stremio.service.svg", "644"],
 ]
@@ -131,6 +140,7 @@ assets = [
     { source = "resources/bin/linux/node", dest = "/usr/bin/stremio-service/bin/node", mode = "755" },
     { source = "resources/bin/linux/ffprobe", dest = "/usr/bin/stremio-service/bin/ffprobe", mode = "755" },
     { source = "resources/bin/linux/server.js", dest = "/usr/bin/stremio-service/server.js", mode = "755" },
+    { source = "LICENSE.md", dest = "/usr/bin/stremio-service/LICENSE.md", mode = "644" },
     { source = "resources/com.stremio.service.desktop", dest = "/usr/share/applications/com.stremio.service.desktop", mode = "644" },
     { source = "resources/com.stremio.service.svg", dest = "/usr/share/icons/hicolor/scalable/apps/com.stremio.service.svg", mode = "644" },
 ]
@@ -147,7 +157,7 @@ name = "StremioService"
 display_name = "Stremio Service"
 identifier = "com.stremio.service"
 icon = ["resources/service.icns", "StremioService.icns"]
-copyright = "Copyright © 2022 Smart Code OOD"
+copyright = "Copyright © 2023 Smart Code OOD"
 url_scheme = "stremio"
 executable = "stremio-service"
 bins = [
@@ -155,5 +165,6 @@ bins = [
     ["resources/bin/macos/node", "node"],
     ["resources/bin/macos/server.js", "server.js"],
     ["resources/bin/macos/ffmpeg", "ffmpeg"],
-    ["resources/bin/macos/ffprobe", "ffprobe"]
+    ["resources/bin/macos/ffprobe", "ffprobe"],
+    ["LICENSE.md", "LICENSE.md"]
 ]

@@ -2,37 +2,42 @@
 
 #[cfg(all(feature = "bundled", any(target_os = "linux", target_os = "macos")))]
 use std::path::Path;
-use std::{fmt::Display, path::PathBuf, str::FromStr, time::Duration};
+use std::{
+    fmt::{Debug, Display},
+    path::PathBuf,
+    str::FromStr,
+    time::Duration,
+};
 
-use anyhow::{anyhow, bail, Context, Error};
+use anyhow::{bail, Context, Error};
 use fslock::LockFile;
-use log::{error, info, trace};
+use futures_util::FutureExt;
+use log::{error, info};
 use rand::Rng;
 use rust_embed::RustEmbed;
 use serde::{Deserialize, Serialize};
 use tao::{
     event::Event,
-    event_loop::{ControlFlow, EventLoop},
+    event_loop::{ControlFlow, EventLoop, EventLoopProxy},
 };
-use tokio::{
-    io::{AsyncBufReadExt, BufReader},
-    sync::mpsc,
-    time::sleep,
-};
-use tokio_stream::{wrappers::ReceiverStream, StreamExt};
+use tokio::time::{interval_at, sleep, Instant};
+use tokio_stream::{wrappers::IntervalStream, StreamExt};
 use url::Url;
 use urlencoding::encode;
 
 use crate::{
     args::Args,
     config::{DATA_DIR, STREMIO_URL, UPDATE_ENDPOINT},
-    server::{Server, ServerSettingsResponse},
+    server::{Info, Server},
     updater::Updater,
 };
 
 use crate::server;
 
-use self::tray_menu::TrayMenu;
+use self::tray_menu::{
+    MenuEvent, TrayMenu, OPEN_MENU, QUIT_MENU, RESTART_SERVER_MENU, START_SERVER_MENU,
+    STOP_SERVER_MENU,
+};
 
 pub mod tray_menu;
 
@@ -53,20 +58,19 @@ pub struct Application {
     config: Config,
 }
 
-#[derive(Debug, Default, Clone, Deserialize, Serialize)]
-enum ServerStatus {
-    #[default]
-    NotRunning,
-    Running {
-        config: server::Config,
-        version: String,
-        server_url: Url,
-    },
+#[derive(Debug, Default, Clone)]
+pub struct TrayStatus {
+    server_js: ServerTrayStatus,
 }
 
-#[derive(Debug, Default)]
-pub struct TrayStatus {
-    server_js: ServerStatus,
+#[derive(Debug, Default, Clone, Deserialize, Serialize)]
+enum ServerTrayStatus {
+    #[default]
+    Stopped,
+    Running {
+        #[serde(flatten)]
+        info: Info,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -131,6 +135,8 @@ impl Config {
 }
 
 impl Application {
+    pub const SERVER_STATUS_EVERY: Duration = Duration::from_secs(30);
+
     pub fn new(config: Config) -> Self {
         Self {
             server: Server::new(config.server.clone()),
@@ -158,8 +164,7 @@ impl Application {
         let _fruit_app = register_apple_event_callbacks();
 
         // Showing the system tray icon as soon as possible to give the user a feedback
-        let event_loop: EventLoop<()> = EventLoop::new();
-        let mut tray_menu = TrayMenu::new(&event_loop)?;
+        let event_loop: EventLoop<MenuEvent> = EventLoop::with_user_event();
 
         let current_version = env!("CARGO_PKG_VERSION")
             .parse()
@@ -175,52 +180,43 @@ impl Application {
             return Ok(());
         }
 
-        self.server
+        let server_info = self
+            .server
             .start()
             .await
             .context("Failed to start Server")?;
-        // wait 2 seconds for the server to start
-        sleep(Duration::from_secs(5)).await;
 
-        let (server_url_sender, server_url_receiver) = mpsc::channel(100);
+        self.server.run_logger();
 
-        self.server.run_logger(server_url_sender);
-        let server_settings = self
-            .server
-            .settings()
-            .await
-            .context("Failed to get server settings")?;
-
-        let mut stream = ReceiverStream::new(server_url_receiver);
-
-        while let Some(server_url) = stream.next().await {
-            let tray_status = TrayStatus {
-                server_js: ServerStatus::Running {
-                    config: self.config.server.clone(),
-                    version: server_settings.values.server_version,
-                    server_url,
+        let tray_status = TrayStatus {
+            server_js: ServerTrayStatus::Running {
+                info: Info {
+                    config: server_info.config.clone(),
+                    version: server_info.version,
+                    server_url: server_info.server_url,
                 },
-            };
-    
-            tray_menu.set_status(tray_status);
+            },
+        };
 
-            break;
-        }
-        
-        // self.run_tray_status_updater(server_settings, server_url_receiver);
+        let mut tray_menu = TrayMenu::new(&event_loop)?;
+        tray_menu.set_status(tray_status);
+
+        let stats_updater =
+            Self::run_tray_status_updater(self.server.clone(), event_loop.create_proxy());
+        tokio::spawn(stats_updater);
 
         // cheap to clone and interior mutability
-        let mut server = self.server.clone();
+        let server = self.server.clone();
 
         event_loop.run(move |event, _event_loop, control_flow| {
             *control_flow = ControlFlow::Wait;
 
             match event {
-                Event::MenuEvent { menu_id, .. } if menu_id == tray_menu.open.clone().id() => {
+                Event::MenuEvent { menu_id, .. } if menu_id == *OPEN_MENU => {
                     // FIXME: call with the app's server_url from the command!
                     StremioWeb::OpenWeb { server_url: None }.open()
                 }
-                Event::MenuEvent { menu_id, .. } if menu_id == tray_menu.quit.clone().id() => {
+                Event::MenuEvent { menu_id, .. } if menu_id == *QUIT_MENU => {
                     // drop(tray_menu);
                     *control_flow = ControlFlow::Exit;
                 }
@@ -229,32 +225,60 @@ impl Application {
                         error!("{err}")
                     }
                 }
+                Event::MenuEvent { menu_id, .. } if menu_id == *START_SERVER_MENU => {
+                    if let Err(err) = futures::executor::block_on(server.start()) {
+                        error!("Starting: {err}")
+                    } else {
+                        info!("Server has been started")
+                    }
+                }
+                Event::MenuEvent { menu_id, .. } if menu_id == *STOP_SERVER_MENU => {
+                    if let Err(err) = futures::executor::block_on(server.stop()) {
+                        error!("{err}")
+                    } else {
+                        info!("Server has been shut down")
+                    }
+                }
+                Event::MenuEvent { menu_id, .. } if menu_id == *RESTART_SERVER_MENU => {
+                    futures::executor::block_on(server.restart().map(drop))
+                }
+                Event::UserEvent(menu_event) => match menu_event {
+                    MenuEvent::UpdateTray(new_tray) => tray_menu.set_status(new_tray),
+                },
                 _ => (),
             }
         });
     }
 
-    // fn run_tray_status_updater(
-    //     &self,
-    //     tray_menu: TrayMenu,
-    //     settings: ServerSettingsResponse,
-    //     server_url_receiver: mpsc::Receiver<Url>,
-    // ) {
-    //     tokio::spawn(async move {
-    //         let stream = ReceiverStream::new(server_url_receiver);
-    //         while let Some(url) = stream.next().await {
-    //             let tray_status = TrayStatus {
-    //                 server_js: ServerStatus::Running {
-    //                     config: self.config.server.clone(),
-    //                     version: settings.values.server_version,
-    //                     server_url: url,
-    //                 },
-    //             };
+    // async fn run_tray_status_updater(&self, tray_menu: Arc<Mutex<TrayMenu>>) {
+    async fn run_tray_status_updater(server: Server, event_loop_proxy: EventLoopProxy<MenuEvent>) {
+        let mut interval = IntervalStream::new(interval_at(
+            Instant::now() + Self::SERVER_STATUS_EVERY,
+            Self::SERVER_STATUS_EVERY,
+        ));
 
-    //             // tray_menu.set_status(tray_status);
-    //         }
-    //     });
-    // }
+        while let Some(_instant) = interval.next().await {
+            let info = server.update_status().await;
+
+            let status = match info {
+                Some(info) => TrayStatus {
+                    server_js: ServerTrayStatus::Running { info: info.clone() },
+                },
+                None => TrayStatus {
+                    server_js: ServerTrayStatus::Stopped,
+                },
+            };
+
+            info!("Server status updated: {status:#?}");
+
+            match event_loop_proxy.send_event(MenuEvent::UpdateTray(status)) {
+                Ok(_) => {
+                    // do nothing
+                }
+                Err(err) => error!("Failed to send new status for tray menu. {err}"),
+            }
+        }
+    }
 }
 
 /// Addon's `stremio://` prefixed url
@@ -288,6 +312,13 @@ impl Display for AddonUrl {
     }
 }
 
+/// Debug printing line as a tuple - `AddonUrl(stremio://....)`
+impl Debug for AddonUrl {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("AddonUrl").field(&self.to_string()).finish()
+    }
+}
+
 pub struct ServerUrl {
     url: Url,
 }
@@ -307,7 +338,7 @@ impl StremioWeb {
             } => {
                 let mut stremio_url = STREMIO_URL.clone();
 
-                let query = format!("streamingServer={}", encode(&server_url.to_string()));
+                let query = format!("streamingServer={}", encode(server_url.as_ref()));
 
                 stremio_url.set_query(Some(&query));
                 stremio_url

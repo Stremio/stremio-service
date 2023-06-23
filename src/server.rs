@@ -1,21 +1,65 @@
 // Copyright (C) 2017-2023 Smart code 203358507
 
-use std::{path::PathBuf, process::Stdio, sync::Arc};
+use std::{path::PathBuf, process::Stdio, sync::Arc, time::Duration};
 
-use anyhow::{anyhow, bail, Context, Error};
+use anyhow::{bail, Context, Error};
 use futures::executor::block_on;
-use log::{error, info, trace};
-use once_cell::sync::OnceCell;
+use futures_util::FutureExt;
+use log::{error, info, trace, warn};
 use serde::{Deserialize, Serialize};
 use tokio::{
-    io::{AsyncBufReadExt, AsyncReadExt, BufReader},
+    io::{AsyncBufReadExt, BufReader},
     process::{Child, ChildStdout, Command},
-    sync::{mpsc, Mutex},
+    sync::Mutex,
+    time::sleep,
 };
 use url::Url;
 
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+// TODO: make configurable
+/// Wait 3 seconds for the server to start
+const WAIT_AFTER_START: Duration = Duration::from_secs(3);
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Info {
+    pub config: Config,
+    /// Not prefixed with `v`, taken from server.js `/settings`
+    ///
+    /// # Examples
+    /// - "4.20.0"
+    /// - "4.20.1"
+    /// - "4.20.2"
+    /// - etc.
+    pub version: String,
+    /// # Examples:
+    ///
+    /// - `http://127.0.0.1:11470`
+    pub server_url: Url,
+}
+
+#[derive(Debug)]
+pub enum ServerStatus {
+    Stopped,
+    Running { process: Child, info: Info },
+}
+
+impl Default for ServerStatus {
+    fn default() -> Self {
+        Self::Stopped
+    }
+}
+
+impl ServerStatus {
+    pub fn stopped() -> Self {
+        Self::Stopped
+    }
+
+    pub fn running(info: Info, process: Child) -> ServerStatus {
+        Self::Running { process, info }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Server {
@@ -25,7 +69,252 @@ pub struct Server {
 #[derive(Debug)]
 struct ServerInner {
     pub config: Config,
-    pub process: Mutex<OnceCell<Child>>,
+    pub status: Mutex<ServerStatus>,
+}
+
+impl Server {
+    pub fn new(config: Config) -> Server {
+        Server {
+            inner: Arc::new(ServerInner {
+                config,
+                status: Mutex::new(ServerStatus::Stopped),
+            }),
+        }
+    }
+
+    pub async fn start(&self) -> Result<Info, Error> {
+        let mut status_guard = self.inner.status.lock().await;
+
+        let info = match &mut *status_guard {
+            ServerStatus::Stopped => {
+                let mut command = Command::new(&self.inner.config.node);
+                #[cfg(target_os = "windows")]
+                command.creation_flags(CREATE_NO_WINDOW);
+
+                command
+                    .env("FFMPEG_BIN", &self.inner.config.ffmpeg)
+                    .env("FFPROBE_BIN", &self.inner.config.ffprobe)
+                    .arg(&self.inner.config.server)
+                    .stdout(Stdio::piped())
+                    .kill_on_drop(true);
+
+                info!("Starting Server: {:#?}", command);
+
+                match command.spawn() {
+                    Ok(new_process) => {
+                        let process_pid = new_process.id();
+                        info!("Server started. (PID {:?})", process_pid);
+
+                        // wait given amount of time to make sure the server has started up and is running
+                        sleep(WAIT_AFTER_START).await;
+
+                        let settings = self.settings().await?;
+
+                        let info = Info {
+                            config: self.inner.config.clone(),
+                            version: settings.values.server_version,
+                            server_url: settings.base_url,
+                        };
+                        // set new child process
+                        *status_guard = ServerStatus::running(info.clone(), new_process);
+
+                        info
+                    }
+                    Err(err) => {
+                        error!("Server didn't start: {err}");
+
+                        bail!("Server didn't start: {err}")
+                    }
+                }
+            }
+            ServerStatus::Running { process, info } => {
+                info!(
+                    "Server is already running (PID: {})",
+                    process.id().unwrap_or_default()
+                );
+
+                info.clone()
+            }
+        };
+
+        Ok(info)
+    }
+
+    // TODO: add some retry mechanism
+    pub async fn settings(&self) -> anyhow::Result<ServerSettingsResponse> {
+        // try https, else, use http
+        let https_response = reqwest::get("https://127.0.0.1:11470/settings")
+            .await
+            .and_then(|response| response.error_for_status());
+
+        let response = match https_response {
+            Ok(response) => response,
+            Err(err) => {
+                warn!("Failed to reach server.js with HTTPS due to: {err}");
+
+                let http_response = reqwest::get("http://127.0.0.1:11470/settings")
+                    .await
+                    .and_then(|response| response.error_for_status());
+
+                match http_response {
+                    Ok(response) => response,
+                    Err(err) => {
+                        error!("Failed to reach server.js with HTTP due to: {err}");
+
+                        bail!("Failed to load server /settings")
+                    }
+                }
+            }
+        };
+
+        let status = response.status();
+        let text = response.text().await?;
+        trace!("Response status {:?}; content: {}", status, text);
+
+        serde_json::from_str::<ServerSettingsResponse>(&text)
+            .context("failed to parse server settings response")
+    }
+
+    pub async fn stdout(&self) -> Result<ChildStdout, Error> {
+        match &mut *self.inner.status.lock().await {
+            ServerStatus::Stopped => bail!("Server is not running"),
+            ServerStatus::Running { process, .. } => match process.stdout.take() {
+                Some(stdout) => Ok(stdout),
+                None => bail!("Can get stdout only once per process!"),
+            },
+        }
+    }
+
+    /// Checks if the child process is still running and returns the information about the server configuration if it does.
+    ///
+    /// If the child process has exited for some reason, this method returns `None`
+    /// and you have to run `start()` again.
+    pub async fn update_status(&self) -> Option<Info> {
+        let mut status = self.inner.status.lock().await;
+
+        match &*status {
+            ServerStatus::Running { process, info } => {
+                let is_running = process.id();
+
+                if is_running.is_some() {
+                    Some(info.clone())
+                } else {
+                    info!("Child process of the server has exited");
+                    *status = ServerStatus::Stopped;
+
+                    None
+                }
+            }
+            ServerStatus::Stopped => {
+                info!("Server hasn't been started yet, do nothing.");
+
+                None
+            }
+        }
+    }
+
+    pub async fn stop(&self) -> anyhow::Result<()> {
+        let mut status = self.inner.status.lock().await;
+
+        match &mut *status {
+            ServerStatus::Running { process, .. } => {
+                let id = process.id();
+                let kill_result = process
+                    .kill()
+                    .await
+                    .context("Failed to stop the server process.");
+
+                match id {
+                    Some(pid) => info!("Server was shut down. (PID #{})", pid),
+                    None => info!("Server is already shut down"),
+                }
+
+                return kill_result;
+            }
+            ServerStatus::Stopped => info!("Server hasn't been started yet, do nothing."),
+        }
+
+        Ok(())
+    }
+
+    pub async fn restart(&self) -> anyhow::Result<Info> {
+        if let Err(err) = self.stop().await {
+            error!("Restarting (stop): {err}")
+        } else {
+            info!("Server has been shut down")
+        }
+
+        // wait for the server to fully stop
+        sleep(Duration::from_secs(6)).await;
+
+        self.start()
+            .inspect(|result| match result {
+                Ok(info) => {
+                    info!("Server has been started: {info:#?}");
+                }
+                Err(err) => {
+                    error!("Restarting (start): {err}")
+                }
+            })
+            .await
+    }
+
+    /// Can be called only once to spawn a logger task for the server!
+    pub fn run_logger(&self /* server_url_sender: mpsc::Sender<Url> */) {
+        let server = self.clone();
+
+        tokio::spawn(async move {
+            match server.stdout().await {
+                Ok(stdout) => {
+                    let mut line_reader = BufReader::new(stdout).lines();
+                    // can be called only once!
+                    loop {
+                        match line_reader.next_line().await {
+                            Ok(Some(stdout_line)) => {
+                                match stdout_line.strip_prefix("EngineFS server started at ") {
+                                    Some(server_url) => {
+                                        info!("Server url: {server_url}");
+                                        // match server_url_sender
+                                        //     .send(
+                                        //         server_url
+                                        //             .parse::<Url>()
+                                        //             .expect("Should be valid Url!"),
+                                        //     )
+                                        //     .await
+                                        // {
+                                        //     Ok(_sent) => {
+                                        //         // do nothing
+                                        //     }
+                                        //     Err(err) => error!("Sending server_url failed: {err}"),
+                                        // };
+                                    }
+                                    None => {
+                                        // skip
+                                    }
+                                };
+
+                                // trace!("server startup logs: {logs}");
+                            }
+                            Ok(None) => {
+                                // do nothing
+                            }
+                            Err(err) => error!("Error collecting Server logs: {err}"),
+                        }
+                    }
+                }
+                Err(err) => error!("{err}"),
+            }
+        });
+    }
+}
+
+impl Drop for Server {
+    fn drop(&mut self) {
+        match block_on(self.stop()) {
+            Ok(()) => {}
+            Err(err) => error!("Failed to stop server on Drop, reason: {err}"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -154,9 +443,9 @@ impl Config {
     /// Returns the ffmpeg binary name (Operating system dependent).
     ///
     /// Supports only 3 OSes:
-    /// - `linux` - returns `ffmpeg-linux` or `ffmpeg` (when `bundled` feature is enabled)
-    /// - `macos` returns `ffmpeg-macos` or `ffmpeg` (when `bundled` feature is enabled)
-    /// - `windows` returns `ffmpeg-windows.exe`
+    /// - `linux` - returns `ffmpeg`
+    /// - `macos` returns `ffmpeg`
+    /// - `windows` returns `ffmpeg.exe`
     ///
     /// If no OS is supplied, [`std::env::consts::OS`] is used.
     ///
@@ -183,8 +472,8 @@ impl Config {
     ///
     /// Supports only 3 OSes:
     /// - `linux` - returns `node`
-    /// - `macos` returns `node`
-    /// - `windows` returns `node.exe`
+    /// - `macos` - returns `node`
+    /// - `windows` - returns `node.exe`
     ///
     /// If no OS is supplied, [`std::env::consts::OS`] is used.
     ///
@@ -196,196 +485,6 @@ impl Config {
             "linux" | "macos" => Ok("node"),
             "windows" => Ok("node.exe"),
             os => bail!("Operating system {} is not supported", os),
-        }
-    }
-}
-
-impl Server {
-    pub fn new(config: Config) -> Self {
-        Server {
-            inner: Arc::new(ServerInner {
-                config,
-                process: Default::default(),
-            }),
-        }
-    }
-
-    pub async fn start(&self) -> Result<(), Error> {
-        let mut command = Command::new(&self.inner.config.node);
-        #[cfg(target_os = "windows")]
-        command.creation_flags(CREATE_NO_WINDOW);
-
-        command
-            .env("FFMPEG_BIN", &self.inner.config.ffmpeg)
-            .env("FFPROBE_BIN", &self.inner.config.ffprobe)
-            .arg(&self.inner.config.server)
-            .stdout(Stdio::piped())
-            .kill_on_drop(true);
-
-        info!("Starting Server: {:#?}", command);
-
-        let child_process = self.inner.process.lock().await;
-        if child_process.get().is_none() {
-            match command.spawn() {
-                Ok(new_process) => {
-                    let process_pid = new_process.id();
-                    info!("Server started. (PID {:?})", process_pid);
-
-                    child_process
-                        .set(new_process)
-                        .expect("Should always be empty, we've just checked after all.")
-                }
-                Err(err) => {
-                    error!("Server didn't start: {err}");
-
-                    bail!("Server didn't start: {err}")
-                }
-            }
-        } else {
-            info!("Only 1 instance of server can run for an instance, do nothing.")
-        }
-
-        Ok(())
-    }
-
-    // TODO: add some retry mechanism
-    pub async fn settings(&self) -> anyhow::Result<ServerSettingsResponse> {
-        // try https, else, use http
-        let https_response = reqwest::get("https://127.0.0.1:11470/settings")
-            .await
-            .and_then(|response| response.error_for_status());
-
-        let response = match https_response {
-            Ok(response) => response,
-            Err(err) => {
-                error!("Failed to reach server.js with HTTPS due to: {err}");
-
-                let http_response = reqwest::get("http://127.0.0.1:11470/settings")
-                    .await
-                    .and_then(|response| response.error_for_status());
-
-                match http_response {
-                    Ok(response) => response,
-                    Err(err) => {
-                        error!("Failed to reach server.js with HTTP due to: {err}");
-
-                        bail!("Failed to load server /settings")
-                    }
-                }
-            }
-        };
-
-        let status = response.status();
-        let text = response.text().await?;
-        trace!("Response status {:?}; content: {}", status, text);
-
-        serde_json::from_str::<ServerSettingsResponse>(&text)
-            .context("failed to parse server settings response")
-    }
-
-    pub async fn stdout(&self) -> Result<ChildStdout, Error> {
-        let mut process = self.inner.process.lock().await;
-
-        match process.get_mut() {
-            Some(child) => match child.stdout.take() {
-                Some(stdout) => Ok(stdout),
-                None => bail!("Can get stdout only once per process!"),
-            },
-            None => bail!("No server is running"),
-        }
-        // match process
-        //     .get_mut()
-        //     .and_then(|process| process.stdout.take())
-        // {
-        //     Some(stdout) => {
-        //         let mut string = String::new();
-        //         stdout
-        //             .read_to_string(&mut string)
-        //             .await
-        //             .context("Failed ot read stdout string")?;
-
-        //         Ok(string)
-        //     }
-        //     None => {
-        //         bail!("No stdout found")
-        //     }
-        // }
-    }
-
-    pub async fn stop(&mut self) -> anyhow::Result<()> {
-        match self.inner.process.lock().await.take() {
-            Some(mut child_process) => {
-                let id = child_process.id();
-                child_process
-                    .kill()
-                    .await
-                    .expect("Failed to stop the server process.");
-
-                match id {
-                    Some(pid) => info!("Server was shut down. (PID #{})", pid),
-                    None => info!("Server is already shut down"),
-                }
-            }
-            None => info!("Server was not running, do nothing."),
-        }
-
-        Ok(())
-    }
-
-    /// Can be called only once to spawn a logger task for the server!
-    pub fn run_logger(&self, server_url_sender: mpsc::Sender<Url>) {
-        let server = self.clone();
-
-        tokio::spawn(async move {
-            match server.stdout().await {
-                Ok(stdout) => {
-                    let mut line_reader = BufReader::new(stdout).lines();
-                    // can be called only once!
-                    loop {
-                        match line_reader.next_line().await {
-                            Ok(Some(stdout_line)) => {
-                                match stdout_line.strip_prefix("EngineFS server started at ") {
-                                    Some(server_url) => {
-                                        info!("Server url: {server_url}");
-                                        match server_url_sender
-                                            .send(
-                                                server_url
-                                                    .parse::<Url>()
-                                                    .expect("Should be valid Url!"),
-                                            )
-                                            .await
-                                        {
-                                            Ok(_sent) => {
-                                                // do nothing
-                                            }
-                                            Err(err) => error!("Sending server_url failed: {err}"),
-                                        };
-                                    }
-                                    None => {
-                                        // skip
-                                    }
-                                };
-
-                                // trace!("server startup logs: {logs}");
-                            }
-                            Ok(None) => {
-                                // do nothing
-                            }
-                            Err(err) => error!("Error collecting Server logs: {err}"),
-                        }
-                    }
-                }
-                Err(err) => error!("{err}"),
-            }
-        });
-    }
-}
-
-impl Drop for Server {
-    fn drop(&mut self) {
-        match block_on(self.stop()) {
-            Ok(()) => {}
-            Err(err) => error!("Failed to stop server on Drop, reason: {err}"),
         }
     }
 }

@@ -19,12 +19,12 @@ pub struct TrayMenu {
     pub quit: CustomMenuItem,
     /// the server status menu item
     pub server: CustomMenuItem,
-    /// Explicitly start the server
-    pub start: CustomMenuItem,
-    /// Explicitly stop the server
-    pub stop: CustomMenuItem,
     /// Restart the server
     pub restart: CustomMenuItem,
+    /// Explicitly start the server
+    pub start: Option<CustomMenuItem>,
+    /// Explicitly stop the server
+    pub stop: Option<CustomMenuItem>,
 }
 
 pub const MAIN_ID: Lazy<TrayId> = Lazy::new(|| TrayId::new("main"));
@@ -47,7 +47,7 @@ impl TrayMenu {
         event_loop: &EventLoop<MenuEvent>,
         status: impl Into<Option<TrayStatus>>,
     ) -> anyhow::Result<Self> {
-        let (tray_menu, server, open, quit, start, stop, restart) = Self::create_menu(status);
+        let (tray_menu, server, open, quit, restart, start, stop) = Self::create_menu(status);
         let icon_file = Icons::get("icon.png").ok_or_else(|| anyhow!("Failed to get icon file"))?;
         let icon = load_icon(icon_file.data.as_ref());
 
@@ -61,23 +61,23 @@ impl TrayMenu {
             open,
             quit,
             server,
+            restart,
             start,
             stop,
-            restart,
         })
     }
 
     pub fn set_status(&mut self, status: TrayStatus) {
-        let (tray_menu, server_status, open, quit, start, stop, restart) =
+        let (tray_menu, server_status, open, quit, restart, start, stop) =
             Self::create_menu(status);
 
         self.system_tray.set_menu(&tray_menu);
         self.open = open;
         self.quit = quit;
         self.server = server_status;
+        self.restart = restart;
         self.start = start;
         self.stop = stop;
-        self.restart = restart;
     }
 
     fn create_menu(
@@ -88,8 +88,8 @@ impl TrayMenu {
         CustomMenuItem,
         CustomMenuItem,
         CustomMenuItem,
-        CustomMenuItem,
-        CustomMenuItem,
+        Option<CustomMenuItem>,
+        Option<CustomMenuItem>,
     ) {
         let mut tray_menu = ContextMenu::new();
         let open_item =
@@ -100,25 +100,38 @@ impl TrayMenu {
         let restart_server_item = tray_menu
             .add_item(MenuItemAttributes::new("Restart Server").with_id(*RESTART_SERVER_MENU));
 
-        let stop_server_item =
-            tray_menu.add_item(MenuItemAttributes::new("Stop Server").with_id(*STOP_SERVER_MENU));
+        #[cfg(debug_assertions)]
+        let stop_server_item = Some(
+            tray_menu.add_item(MenuItemAttributes::new("Stop Server").with_id(*STOP_SERVER_MENU)),
+        );
+        #[cfg(not(debug_assertions))]
+        let stop_server_item = None;
 
-        let start_server_item =
-            tray_menu.add_item(MenuItemAttributes::new("Start Server").with_id(*START_SERVER_MENU));
+        #[cfg(not(debug_assertions))]
+        let start_server_item = None;
+        #[cfg(debug_assertions)]
+        let start_server_item = Some(
+            tray_menu.add_item(MenuItemAttributes::new("Start Server").with_id(*START_SERVER_MENU)),
+        );
 
         let version_item_label = format!("Service v{}", env!("CARGO_PKG_VERSION"));
         let version_item = MenuItemAttributes::new(version_item_label.as_str()).with_enabled(false);
         tray_menu.add_item(version_item);
 
         let status: Option<TrayStatus> = status.into();
+
+        #[cfg(not(debug_assertions))]
+        let debug = String::new();
+        #[cfg(debug_assertions)]
+        let debug = format!(
+            "\nUpdated every: {}s",
+            crate::Application::SERVER_STATUS_EVERY.as_secs()
+        );
+
         let server_status: String = match status.unwrap_or_default().server_js {
-            ServerTrayStatus::Stopped => "Server is not running".to_string(),
+            ServerTrayStatus::Stopped => format!("Server is not running{debug}"),
             ServerTrayStatus::Running { info } => {
-                format!(
-                    "Server v{} is running\nUpdated every: {}s",
-                    info.version,
-                    Application::SERVER_STATUS_EVERY.as_secs()
-                )
+                format!("Server v{} is running{debug}", info.version)
             }
         };
 
@@ -130,9 +143,9 @@ impl TrayMenu {
             server_item,
             open_item,
             quit_item,
+            restart_server_item,
             start_server_item,
             stop_server_item,
-            restart_server_item,
         )
     }
 }

@@ -20,7 +20,7 @@ use tao::{
     event::Event,
     event_loop::{ControlFlow, EventLoop, EventLoopProxy},
 };
-use tokio::time::{interval_at, sleep, Instant};
+use tokio::time::{interval_at, Instant};
 use tokio_stream::{wrappers::IntervalStream, StreamExt};
 use url::Url;
 use urlencoding::encode;
@@ -317,10 +317,6 @@ impl Debug for AddonUrl {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_tuple("AddonUrl").field(&self.to_string()).finish()
     }
-}
-
-pub struct ServerUrl {
-    url: Url,
 }
 
 pub enum StremioWeb {

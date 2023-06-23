@@ -128,6 +128,7 @@ impl Config {
             force_update: args.force_update,
         })
     }
+
     fn get_random_updater_endpoint() -> String {
         let mut rng = rand::thread_rng();
         let index = rng.gen_range(0..UPDATE_ENDPOINT.len());
@@ -305,6 +306,7 @@ impl AddonUrl {
         self.url.clone()
     }
 }
+
 impl Display for AddonUrl {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let stremio_protocol = self.url.to_string().replace("https://", "stremio://");

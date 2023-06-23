@@ -95,8 +95,6 @@ impl TrayMenu {
         let open_item =
             tray_menu.add_item(MenuItemAttributes::new("Open Stremio Web").with_id(*OPEN_MENU));
 
-        let quit_item = tray_menu.add_item(MenuItemAttributes::new("Quit").with_id(*QUIT_MENU));
-
         let restart_server_item = tray_menu
             .add_item(MenuItemAttributes::new("Restart Server").with_id(*RESTART_SERVER_MENU));
 
@@ -113,6 +111,8 @@ impl TrayMenu {
         let start_server_item = Some(
             tray_menu.add_item(MenuItemAttributes::new("Start Server").with_id(*START_SERVER_MENU)),
         );
+
+        let quit_item = tray_menu.add_item(MenuItemAttributes::new("Quit").with_id(*QUIT_MENU));
 
         let version_item_label = format!("Service v{}", env!("CARGO_PKG_VERSION"));
         let version_item = MenuItemAttributes::new(version_item_label.as_str()).with_enabled(false);

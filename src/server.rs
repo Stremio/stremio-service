@@ -40,6 +40,7 @@ pub struct Info {
 }
 
 #[derive(Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum ServerStatus {
     Stopped,
     Running { process: Child, info: Info },
@@ -271,29 +272,11 @@ impl Server {
                     loop {
                         match line_reader.next_line().await {
                             Ok(Some(stdout_line)) => {
-                                match stdout_line.strip_prefix("EngineFS server started at ") {
-                                    Some(server_url) => {
-                                        info!("Server url: {server_url}");
-                                        // match server_url_sender
-                                        //     .send(
-                                        //         server_url
-                                        //             .parse::<Url>()
-                                        //             .expect("Should be valid Url!"),
-                                        //     )
-                                        //     .await
-                                        // {
-                                        //     Ok(_sent) => {
-                                        //         // do nothing
-                                        //     }
-                                        //     Err(err) => error!("Sending server_url failed: {err}"),
-                                        // };
-                                    }
-                                    None => {
-                                        // skip
-                                    }
-                                };
-
-                                // trace!("server startup logs: {logs}");
+                                if let Some(server_url) =
+                                    stdout_line.strip_prefix("EngineFS server started at ")
+                                {
+                                    info!("Server url: {server_url}");
+                                }
                             }
                             Ok(None) => {
                                 // do nothing

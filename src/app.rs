@@ -64,6 +64,7 @@ pub struct TrayStatus {
 }
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]
+#[allow(clippy::large_enum_variant)]
 enum ServerTrayStatus {
     #[default]
     Stopped,

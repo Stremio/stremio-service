@@ -7,7 +7,7 @@ use tao::{
     TrayId,
 };
 
-use crate::{app::Application, util::load_icon};
+use crate::util::load_icon;
 
 use super::{Icons, ServerTrayStatus, TrayStatus};
 
@@ -27,12 +27,12 @@ pub struct TrayMenu {
     pub stop: Option<CustomMenuItem>,
 }
 
-pub const MAIN_ID: Lazy<TrayId> = Lazy::new(|| TrayId::new("main"));
-pub const OPEN_MENU: Lazy<MenuId> = Lazy::new(|| MenuId::new("open"));
-pub const QUIT_MENU: Lazy<MenuId> = Lazy::new(|| MenuId::new("quit"));
-pub const STOP_SERVER_MENU: Lazy<MenuId> = Lazy::new(|| MenuId::new("stop server"));
-pub const START_SERVER_MENU: Lazy<MenuId> = Lazy::new(|| MenuId::new("start server"));
-pub const RESTART_SERVER_MENU: Lazy<MenuId> = Lazy::new(|| MenuId::new("restart server"));
+pub static MAIN_ID: Lazy<TrayId> = Lazy::new(|| TrayId::new("main"));
+pub static OPEN_MENU: Lazy<MenuId> = Lazy::new(|| MenuId::new("open"));
+pub static QUIT_MENU: Lazy<MenuId> = Lazy::new(|| MenuId::new("quit"));
+pub static STOP_SERVER_MENU: Lazy<MenuId> = Lazy::new(|| MenuId::new("stop server"));
+pub static START_SERVER_MENU: Lazy<MenuId> = Lazy::new(|| MenuId::new("start server"));
+pub static RESTART_SERVER_MENU: Lazy<MenuId> = Lazy::new(|| MenuId::new("restart server"));
 
 pub enum MenuEvent {
     UpdateTray(TrayStatus),

@@ -1,5 +1,7 @@
 # Stremio Service
 
+[![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/stremio/stremio-service/build.yml?label=build%20(master))](https://github.com/Stremio/stremio-service/actions/workflows/build.yml?query=branch%3Amaster)
+
 ## Features
 
 - `default` features - none

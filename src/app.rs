@@ -424,7 +424,7 @@ fn register_apple_event_callbacks() -> fruitbasket::FruitApp<'static> {
         Box::new(move |event| {
             let open_url: String = fruitbasket::parse_url_event(event);
 
-            let open_url = match open_url.parse() {
+            let open_url = match open_url.parse::<AddonUrl>() {
                 Ok(addon_url) => StremioWeb::Addon(open_url).open(),
                 Err(err) => {
                     error!("{err}");

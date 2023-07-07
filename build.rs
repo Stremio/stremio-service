@@ -1,6 +1,7 @@
 use std::{env::consts::OS, error::Error, fs, path::PathBuf};
 
 use once_cell::sync::Lazy;
+
 use serde::Deserialize;
 use url::Url;
 
@@ -27,6 +28,10 @@ const SUPPORTED_OS: &[&str] = &["linux", "macos", "windows"];
 
 fn main() -> Result<(), Box<dyn Error>> {
     println!("cargo:rerun-if-changed=src/");
+    // Rebuild the application and download a new server.js if the version file has changed.
+    for supported_os in SUPPORTED_OS.iter() {
+        println!("cargo:rerun-if-changed=resources/bin/{supported_os}/server_version.txt",);
+    }
 
     if !SUPPORTED_OS.contains(&OS) {
         panic!(

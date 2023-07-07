@@ -11,7 +11,7 @@ use std::{
 
 use anyhow::{bail, Context, Error};
 use fslock::LockFile;
-use log::{error, info, debug};
+use log::{debug, error, info};
 use rand::Rng;
 use rust_embed::RustEmbed;
 use serde::{Deserialize, Serialize};

@@ -74,7 +74,6 @@ url = { version = "2.3", features = ["serde"] }
 
 urlencoding = "2.1"
 zip-extract = "0.1"
-tokio-stream = { version = "0.1.14", features = ["io-util"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # MacOS Apple Events handling

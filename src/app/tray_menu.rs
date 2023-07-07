@@ -36,6 +36,25 @@ pub static STOP_SERVER_MENU: Lazy<MenuId> = Lazy::new(|| MenuId::new("stop serve
 pub static START_SERVER_MENU: Lazy<MenuId> = Lazy::new(|| MenuId::new("start server"));
 pub static RESTART_SERVER_MENU: Lazy<MenuId> = Lazy::new(|| MenuId::new("restart server"));
 
+/// User server action from the Tray menu
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ServerAction {
+    Start,
+    Stop,
+    /// First stops the server child process then it starts it back up.
+    Restart,
+}
+
+impl ServerAction {
+    /// Get the [`MenuId`] of the given action in the [`TrayMenu`].
+    pub fn menu_id(&self) -> MenuId {
+        match self {
+            ServerAction::Start => *START_SERVER_MENU,
+            ServerAction::Stop => *STOP_SERVER_MENU,
+            ServerAction::Restart => *RESTART_SERVER_MENU,
+        }
+    }
+}
 pub enum MenuEvent {
     UpdateTray(TrayStatus),
 }
@@ -132,6 +151,7 @@ impl TrayMenu {
 
         let server_status: String = match status.unwrap_or_default().server_js {
             ServerTrayStatus::Stopped => format!("Server is not running{debug}"),
+            ServerTrayStatus::Restarting => format!("Server is restarting{debug}"),
             ServerTrayStatus::Running { info } => {
                 format!("Server v{} is running{debug}", info.version)
             }

@@ -11,8 +11,7 @@ use std::{
 
 use anyhow::{bail, Context, Error};
 use fslock::LockFile;
-use futures_util::FutureExt;
-use log::{error, info};
+use log::{error, info, debug};
 use rand::Rng;
 use rust_embed::RustEmbed;
 use serde::{Deserialize, Serialize};
@@ -20,12 +19,16 @@ use tao::{
     event::Event,
     event_loop::{ControlFlow, EventLoop, EventLoopProxy},
 };
-use tokio::time::{interval_at, Instant};
-use tokio_stream::{wrappers::IntervalStream, StreamExt};
+use tokio::{
+    select,
+    sync::{mpsc, watch},
+    time::{interval_at, Instant},
+};
 use url::Url;
 use urlencoding::encode;
 
 use crate::{
+    app::tray_menu::ServerAction,
     args::Args,
     config::{DATA_DIR, STREMIO_URL, UPDATE_ENDPOINT},
     server::{Info, Server},
@@ -68,6 +71,8 @@ pub struct TrayStatus {
 enum ServerTrayStatus {
     #[default]
     Stopped,
+    /// The server is currently being restarted
+    Restarting,
     Running {
         #[serde(flatten)]
         info: Info,
@@ -182,13 +187,23 @@ impl Application {
             return Ok(());
         }
 
+        // we manually start the server the first time, to make sure it starts with the app without any delay
+        // in child process start nor in updating the server status in the Tray menu
         let server_info = self
             .server
             .start()
             .await
             .context("Failed to start Server")?;
-
         self.server.run_logger();
+
+        let (action_sender, action_receiver) = tokio::sync::watch::channel(None);
+        let (status_sender, status_receiver) = tokio::sync::mpsc::channel(5);
+
+        tokio::spawn(Self::run_server_process_updater(
+            action_receiver,
+            status_sender,
+            self.server.clone(),
+        ));
 
         let tray_status = TrayStatus {
             server_js: ServerTrayStatus::Running {
@@ -203,12 +218,12 @@ impl Application {
         let mut tray_menu = TrayMenu::new(&event_loop)?;
         tray_menu.set_status(tray_status);
 
-        let stats_updater =
-            Self::run_tray_status_updater(self.server.clone(), event_loop.create_proxy());
+        let stats_updater = Self::run_tray_status_updater(
+            self.server.clone(),
+            status_receiver,
+            event_loop.create_proxy(),
+        );
         tokio::spawn(stats_updater);
-
-        // cheap to clone and interior mutability
-        let server = self.server.clone();
 
         event_loop.run(move |event, _event_loop, control_flow| {
             *control_flow = ControlFlow::Wait;
@@ -223,26 +238,23 @@ impl Application {
                     *control_flow = ControlFlow::Exit;
                 }
                 Event::LoopDestroyed => {
-                    if let Err(err) = futures::executor::block_on(server.stop()) {
-                        error!("{err}")
-                    }
+                    // Server will be stopped on drop!
+                    // do nothing
                 }
                 Event::MenuEvent { menu_id, .. } if menu_id == *START_SERVER_MENU => {
-                    if let Err(err) = futures::executor::block_on(server.start()) {
-                        error!("Starting: {err}")
-                    } else {
-                        info!("Server has been started")
+                    if let Err(err) = action_sender.send(Some(ServerAction::Start)) {
+                        error!("Start server action: {err}")
                     }
                 }
                 Event::MenuEvent { menu_id, .. } if menu_id == *STOP_SERVER_MENU => {
-                    if let Err(err) = futures::executor::block_on(server.stop()) {
-                        error!("{err}")
-                    } else {
-                        info!("Server has been shut down")
+                    if let Err(err) = action_sender.send(Some(ServerAction::Stop)) {
+                        error!("Stop server action: {err}")
                     }
                 }
                 Event::MenuEvent { menu_id, .. } if menu_id == *RESTART_SERVER_MENU => {
-                    futures::executor::block_on(server.restart().map(drop))
+                    if let Err(err) = action_sender.send(Some(ServerAction::Restart)) {
+                        error!("Restart server action: {err}")
+                    }
                 }
                 Event::UserEvent(menu_event) => match menu_event {
                     MenuEvent::UpdateTray(new_tray) => tray_menu.set_status(new_tray),
@@ -252,33 +264,112 @@ impl Application {
         });
     }
 
-    // async fn run_tray_status_updater(&self, tray_menu: Arc<Mutex<TrayMenu>>) {
-    async fn run_tray_status_updater(server: Server, event_loop_proxy: EventLoopProxy<MenuEvent>) {
-        let mut interval = IntervalStream::new(interval_at(
+    async fn run_tray_status_updater(
+        server: Server,
+        mut status_receiver: mpsc::Receiver<ServerTrayStatus>,
+        event_loop_proxy: EventLoopProxy<MenuEvent>,
+    ) {
+        let mut interval = interval_at(
             Instant::now() + Self::SERVER_STATUS_EVERY,
             Self::SERVER_STATUS_EVERY,
-        ));
+        );
 
-        while let Some(_instant) = interval.next().await {
-            let info = server.update_status().await;
+        loop {
+            let status = select! {
+                _instant = interval.tick() => {
+                    let info = server.update_status().await;
 
-            let status = match info {
-                Some(info) => TrayStatus {
-                    server_js: ServerTrayStatus::Running { info: info.clone() },
+                    let status = match info {
+                        Some(info) => ServerTrayStatus::Running { info: info.clone() },
+                        None => ServerTrayStatus::Stopped,
+                    };
+
+                    debug!("Server status was update (every {}s)", Self::SERVER_STATUS_EVERY.as_secs());
+
+                    status
                 },
-                None => TrayStatus {
-                    server_js: ServerTrayStatus::Stopped,
-                },
+                Some(status) = status_receiver.recv() => {
+                    debug!("Server status was updated by an action");
+
+                    status
+                }
             };
+            let tray_status = TrayStatus { server_js: status };
 
-            info!("Server status updated: {status:#?}");
-
-            match event_loop_proxy.send_event(MenuEvent::UpdateTray(status)) {
+            match event_loop_proxy.send_event(MenuEvent::UpdateTray(tray_status)) {
                 Ok(_) => {
                     // do nothing
                 }
                 Err(err) => error!("Failed to send new status for tray menu. {err}"),
             }
+        }
+    }
+
+    /// This updater makes sure that we don't block the event loop of `tao`
+    /// when updating (like restarting, stopping and starting) the server process.
+    async fn run_server_process_updater(
+        mut receiver: watch::Receiver<Option<ServerAction>>,
+        status_sender: mpsc::Sender<ServerTrayStatus>,
+        server: Server,
+    ) {
+        // errors only when sender is dropped.
+        while receiver.changed().await.is_ok() {
+            let action = *receiver.borrow();
+
+            match action {
+                Some(ServerAction::Start) => {
+                    // handle the result of starting the server
+                    match server.start().await {
+                        Ok(info) => {
+                            // handle the result of closed channel receiver
+                            if let Err(_err) =
+                                status_sender.send(ServerTrayStatus::Running { info }).await
+                            {
+                                error!("Failed to update Server tray status on stop because receiver was already closed")
+                            };
+                        }
+                        Err(err) => error!("Failed to start Server: {err}"),
+                    }
+                }
+                Some(ServerAction::Stop) => {
+                    // handle the result of stopping the server
+                    if let Err(err) = server.stop().await {
+                        error!("Failed to stop Server: {err}");
+                    }
+
+                    // Even if stopping fails, then probably the process isn't running any more,
+                    // we can safely assume it's in a Stopped state.
+                    // handle the result of closed channel receiver
+                    if let Err(_err) = status_sender.send(ServerTrayStatus::Stopped).await {
+                        error!("Failed to update Server tray status on stop because receiver was already closed")
+                    }
+                }
+                Some(ServerAction::Restart) => {
+                    // handle the result of closed channel receiver
+                    if let Err(_err) = status_sender.send(ServerTrayStatus::Restarting).await {
+                        error!("Failed to update Server tray status on beginning of restart because receiver was already closed")
+                    }
+
+                    // handle the result of restarting the server
+                    let status = match server.restart().await {
+                        Ok(info) => ServerTrayStatus::Running { info },
+                        Err(err) => {
+                            error!("Failed to restart Server: {err}");
+                            ServerTrayStatus::Stopped
+                        }
+                    };
+
+                    // handle the result of closed channel receiver
+                    if let Err(_err) = status_sender.send(status).await {
+                        error!("Failed to update Server tray status on end of restart because receiver was already closed");
+                    };
+                }
+                None => {
+                    // we don't care about the initial value of None
+                    // because we've manually started the server
+                    continue;
+                }
+            };
         }
     }
 }

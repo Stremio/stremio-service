@@ -4,8 +4,8 @@ use std::{path::PathBuf, process::Stdio, sync::Arc, time::Duration};
 
 use anyhow::{bail, Context, Error};
 use futures::executor::block_on;
-use futures_util::FutureExt;
-use log::{error, info, trace, warn};
+use futures_util::TryFutureExt;
+use log::{error, info, trace};
 use serde::{Deserialize, Serialize};
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
@@ -83,6 +83,7 @@ impl Server {
         }
     }
 
+    /// Starts the server if it is in a stopped state ( [`ServerStatus::Stopped`] )
     pub async fn start(&self) -> Result<Info, Error> {
         let mut status_guard = self.inner.status.lock().await;
 
@@ -143,37 +144,26 @@ impl Server {
 
     // TODO: add some retry mechanism
     pub async fn settings(&self) -> anyhow::Result<ServerSettingsResponse> {
-        // try https, else, use http
-        let https_response = reqwest::get("https://127.0.0.1:11470/settings")
+        // always use http as it's accessible at any time
+        let response = reqwest::get("http://127.0.0.1:11470/settings")
             .await
             .and_then(|response| response.error_for_status());
 
-        let response = match https_response {
-            Ok(response) => response,
-            Err(err) => {
-                warn!("Failed to reach server.js with HTTPS due to: {err}");
+        match response {
+            Ok(response) => {
+                let status = response.status();
+                let text = response.text().await?;
+                trace!("Response status {:?}; content: {}", status, text);
 
-                let http_response = reqwest::get("http://127.0.0.1:11470/settings")
-                    .await
-                    .and_then(|response| response.error_for_status());
-
-                match http_response {
-                    Ok(response) => response,
-                    Err(err) => {
-                        error!("Failed to reach server.js with HTTP due to: {err}");
-
-                        bail!("Failed to load server /settings")
-                    }
-                }
+                serde_json::from_str::<ServerSettingsResponse>(&text)
+                    .context("failed to parse server settings response")
             }
-        };
+            Err(err) => {
+                error!("Failed to reach server.js with HTTP due to: {err}");
 
-        let status = response.status();
-        let text = response.text().await?;
-        trace!("Response status {:?}; content: {}", status, text);
-
-        serde_json::from_str::<ServerSettingsResponse>(&text)
-            .context("failed to parse server settings response")
+                bail!("Failed to load server /settings")
+            }
+        }
     }
 
     pub async fn stdout(&self) -> Result<ChildStdout, Error> {
@@ -214,6 +204,7 @@ impl Server {
         }
     }
 
+    /// Stops the server it's currently running ( [`ServerStatus::Running`] )
     pub async fn stop(&self) -> anyhow::Result<()> {
         let mut status = self.inner.status.lock().await;
 
@@ -241,27 +232,18 @@ impl Server {
     pub async fn restart(&self) -> anyhow::Result<Info> {
         if let Err(err) = self.stop().await {
             error!("Restarting (stop): {err}")
-        } else {
-            info!("Server has been shut down")
         }
 
         // wait for the server to fully stop
         sleep(Duration::from_secs(6)).await;
 
         self.start()
-            .inspect(|result| match result {
-                Ok(info) => {
-                    info!("Server has been started: {info:#?}");
-                }
-                Err(err) => {
-                    error!("Restarting (start): {err}")
-                }
-            })
+            .inspect_err(|err| error!("Restarting (start): {err}"))
             .await
     }
 
     /// Can be called only once to spawn a logger task for the server!
-    pub fn run_logger(&self /* server_url_sender: mpsc::Sender<Url> */) {
+    pub fn run_logger(&self) {
         let server = self.clone();
 
         tokio::spawn(async move {

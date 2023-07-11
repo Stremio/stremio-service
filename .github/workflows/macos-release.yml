@@ -53,7 +53,7 @@ jobs:
       - name: Notarize app
         env:
           NOTARIZATION_PWD: ${{ secrets.APPLE_DEVACCOUNT_NOTARIZATION_APP_SPECIFIC_PWD }}
-          TEAM_ID: ${{ secrets.APPLE_DEVELOPER_TEAM_ID }}
+          TEAM_ID: ${{ secrets.TEAM_ID }}
         run: |
           echo "Create keychain profile"
           xcrun notarytool store-credentials "notarytool-profile" --apple-id "ivo@linvo.com" --team-id "$TEAM_ID" --password "$NOTARIZATION_PWD"

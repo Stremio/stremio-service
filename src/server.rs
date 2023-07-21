@@ -6,11 +6,12 @@ use anyhow::{bail, Context, Error};
 use futures::executor::block_on;
 use futures_util::TryFutureExt;
 use log::{error, info, trace};
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::{Child, ChildStdout, Command},
-    sync::Mutex,
+    sync::{watch, Mutex},
     time::sleep,
 };
 use url::Url;
@@ -21,6 +22,11 @@ const CREATE_NO_WINDOW: u32 = 0x08000000;
 // TODO: make configurable
 /// Wait 3 seconds for the server to start
 const WAIT_AFTER_START: Duration = Duration::from_secs(3);
+
+/// Waits 6 seconds for the server to fully stop
+const WAIT_FOR_FULL_STOP: Duration = Duration::from_secs(6);
+
+pub static DEFAULT_SERVER_URL: Lazy<Url> = Lazy::new(|| "http://127.0.0.1:11470".parse().unwrap());
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Info {
@@ -33,10 +39,13 @@ pub struct Info {
     /// - "4.20.2"
     /// - etc.
     pub version: String,
+
+    /// The server base url in the local network.
+    ///
     /// # Examples:
     ///
-    /// - `http://127.0.0.1:11470`
-    pub server_url: Url,
+    /// - `http://192.168.0.215:11470`
+    pub base_url: Url,
 }
 
 #[derive(Debug)]
@@ -115,7 +124,7 @@ impl Server {
                         let info = Info {
                             config: self.inner.config.clone(),
                             version: settings.values.server_version,
-                            server_url: settings.base_url,
+                            base_url: settings.base_url,
                         };
                         // set new child process
                         *status_guard = ServerStatus::running(info.clone(), new_process);
@@ -230,12 +239,14 @@ impl Server {
     }
 
     pub async fn restart(&self) -> anyhow::Result<Info> {
-        if let Err(err) = self.stop().await {
-            error!("Restarting (stop): {err}")
+        match self.stop().await {
+            Ok(_) => {
+                // wait for the server to fully stop
+                sleep(WAIT_FOR_FULL_STOP).await;
+            }
+            // no need to wait if server stopping returned an error
+            Err(err) => error!("Restarting (stop): {err}"),
         }
-
-        // wait for the server to fully stop
-        sleep(Duration::from_secs(6)).await;
 
         self.start()
             .inspect_err(|err| error!("Restarting (start): {err}"))
@@ -243,7 +254,7 @@ impl Server {
     }
 
     /// Can be called only once to spawn a logger task for the server!
-    pub fn run_logger(&self) {
+    pub fn run_logger(&self, url_sender: watch::Sender<Option<Url>>) {
         let server = self.clone();
 
         tokio::spawn(async move {
@@ -257,7 +268,15 @@ impl Server {
                                 if let Some(server_url) =
                                     stdout_line.strip_prefix("EngineFS server started at ")
                                 {
-                                    info!("Server url: {server_url}");
+                                    match server_url.parse::<Url>() {
+                                        Ok(server_url) => {
+                                            info!("Server url: {server_url}");
+                                            url_sender.send_replace(Some(server_url));
+                                        }
+                                        Err(err) => error!(
+                                            "Error when passing {server_url} as server url: {err}"
+                                        ),
+                                    }
                                 }
                             }
                             Ok(None) => {

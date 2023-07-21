@@ -31,11 +31,9 @@ use crate::{
     app::tray_menu::ServerAction,
     args::Args,
     config::{DATA_DIR, STREMIO_URL, UPDATE_ENDPOINT},
-    server::{Info, Server},
+    server::{self, Info, Server, DEFAULT_SERVER_URL},
     updater::Updater,
 };
-
-use crate::server;
 
 use self::tray_menu::{
     MenuEvent, TrayMenu, OPEN_MENU, QUIT_MENU, RESTART_SERVER_MENU, START_SERVER_MENU,
@@ -194,7 +192,8 @@ impl Application {
             .start()
             .await
             .context("Failed to start Server")?;
-        self.server.run_logger();
+        let (server_url_sender, server_url_receiver) = tokio::sync::watch::channel(None);
+        self.server.run_logger(server_url_sender);
 
         let (action_sender, action_receiver) = tokio::sync::watch::channel(None);
         let (status_sender, status_receiver) = tokio::sync::mpsc::channel(5);
@@ -210,7 +209,7 @@ impl Application {
                 info: Info {
                     config: server_info.config.clone(),
                     version: server_info.version,
-                    server_url: server_info.server_url,
+                    base_url: server_info.base_url,
                 },
             },
         };
@@ -230,11 +229,22 @@ impl Application {
 
             match event {
                 Event::MenuEvent { menu_id, .. } if menu_id == *OPEN_MENU => {
-                    // FIXME: call with the app's server_url from the command!
-                    StremioWeb::OpenWeb { server_url: None }.open()
+                    // no need to pass the url to stremio-web if it's the default one.
+                    let server_url =
+                        server_url_receiver
+                            .borrow()
+                            .to_owned()
+                            .and_then(|server_url| {
+                                if *DEFAULT_SERVER_URL == server_url {
+                                    None
+                                } else {
+                                    Some(server_url)
+                                }
+                            });
+
+                    StremioWeb::OpenWeb { server_url }.open()
                 }
                 Event::MenuEvent { menu_id, .. } if menu_id == *QUIT_MENU => {
-                    // drop(tray_menu);
                     *control_flow = ControlFlow::Exit;
                 }
                 Event::LoopDestroyed => {
@@ -284,7 +294,7 @@ impl Application {
                         None => ServerTrayStatus::Stopped,
                     };
 
-                    debug!("Server status was update (every {}s)", Self::SERVER_STATUS_EVERY.as_secs());
+                    debug!("Server status is updated (every {}s)", Self::SERVER_STATUS_EVERY.as_secs());
 
                     status
                 },
@@ -378,6 +388,7 @@ impl Application {
 pub struct AddonUrl {
     url: Url,
 }
+
 impl FromStr for AddonUrl {
     type Err = anyhow::Error;
 
@@ -414,7 +425,6 @@ impl Debug for AddonUrl {
 }
 
 pub enum StremioWeb {
-    // todo: replace with url
     Addon(AddonUrl),
     OpenWeb { server_url: Option<Url> },
 }

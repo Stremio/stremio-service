@@ -40,11 +40,11 @@ fn copyright() {
                 .unwrap_or(false);
 
             if parent_dir_included {
-                if let Ok(file) = fs::File::open(&path) {
+                if let Ok(file) = fs::File::open(path) {
                     let reader = io::BufReader::new(file);
                     if let Some(first_line) = reader.lines().next() {
                         let line = first_line.unwrap();
-                        assert_eq!(copyright_regex.is_match(&line), true);
+                        assert!(copyright_regex.is_match(&line));
                     }
                 }
             }

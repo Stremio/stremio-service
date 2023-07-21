@@ -149,7 +149,7 @@ impl TrayMenu {
             crate::Application::SERVER_STATUS_EVERY.as_secs()
         );
 
-        let server_status: String = match status.unwrap_or_default().server_js {
+        let server_status = match status.unwrap_or_default().server_js {
             ServerTrayStatus::Stopped => format!("Server is not running{debug}"),
             ServerTrayStatus::Restarting => format!("Server is restarting{debug}"),
             ServerTrayStatus::Running { info } => {

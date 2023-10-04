@@ -99,7 +99,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     {
         let now = Local::now();
         let copyright = format!("Copyright © {} Smart Code OOD", now.year());
-        let description = std::env::var("CARGO_PKG_DESCRIPTION").unwrap();
+        let description =
+            std::env::var("CARGO_PKG_DESCRIPTION").expect("Failed to read package description");
+
+        let icon_path = resources.join("service.ico");
+        let icon = icon_path.to_str().expect("Failed to find icon");
 
         let runtime_info = [
             ("ProductName", "Stremio Runtime"),
@@ -119,7 +123,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         let mut res = winres::WindowsResource::new();
         res.set("FileDescription", &description);
         res.set("LegalCopyright", &copyright);
-        res.set_icon_with_id("resources/service.ico", "ICON");
+        res.set_icon_with_id(icon, "ICON");
         res.compile().unwrap();
     }
 

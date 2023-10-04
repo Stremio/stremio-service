@@ -113,7 +113,7 @@ strip = "debuginfo"
 [package.metadata.deb]
 copyright = "© 2023 Smart Code OOD"
 extended-description = "Media Center"
-# depends = "$auto, node (>=14.21.1), ffprobe (>=4.2.7)"
+# depends = "$auto, ffprobe (>=4.2.7)"
 depends = "$auto"
 section = "Stremio;Media;Play;"
 priority = "optional"
@@ -121,7 +121,6 @@ assets = [
     ["target/release/stremio-service", "/usr/bin/stremio-service/stremio-service", "755"],
     # We use a specific version of ffmpeg-jellyfin
     ["resources/bin/linux/ffmpeg", "/usr/bin/stremio-service/ffmpeg", "755"],
-    # Should be possible to remove with `depends` but it shows an error at the moment.
     ["resources/bin/linux/stremio-runtime", "/usr/bin/stremio-service/stremio-runtime", "755"],
     ["resources/bin/linux/ffprobe", "/usr/bin/stremio-service/ffprobe", "755"],
     ["resources/bin/linux/server.js", "/usr/bin/stremio-service/server.js", "755"],
@@ -136,7 +135,6 @@ features = ["bundled"]
 assets = [
     { source = "target/release/stremio-service", dest = "/usr/bin/stremio-service/stremio-service", mode = "755" },
     { source = "resources/bin/linux/ffmpeg", dest = "/usr/bin/stremio-service/ffmpeg", mode = "755" },
-    # Should be possible to remove with `depends` but it shows an error at the moment.
     { source = "resources/bin/linux/stremio-runtime", dest = "/usr/bin/stremio-service/stremio-runtime", mode = "755" },
     { source = "resources/bin/linux/ffprobe", dest = "/usr/bin/stremio-service/ffprobe", mode = "755" },
     { source = "resources/bin/linux/server.js", dest = "/usr/bin/stremio-service/server.js", mode = "755" },
@@ -144,12 +142,11 @@ assets = [
     { source = "resources/com.stremio.service.desktop", dest = "/usr/share/applications/com.stremio.service.desktop", mode = "644" },
     { source = "resources/com.stremio.service.svg", dest = "/usr/share/icons/hicolor/scalable/apps/com.stremio.service.svg", mode = "644" },
 ]
-# depends = "$auto, node (>=14.21.1), ffprobe (>=4.2.7)"
+# depends = "$auto, ffprobe (>=4.2.7)"
 features = ["bundled"]
 
 [package.metadata.generate-rpm.requires]
 libappindicator-gtk3 = "*"
-# node = ">=14.21.1"
 # ffprobe = ">=4.2.7"
 
 [package.metadata.macos]

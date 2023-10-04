@@ -54,7 +54,7 @@ impl Config {
 
             for path in binaries_paths.iter() {
                 if !path.exists() {
-                    bail!("{:?} not found", path)
+                    bail!("Failed to locate the file {:?}", path)
                 }
             }
 

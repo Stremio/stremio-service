@@ -135,10 +135,10 @@ features = ["bundled"]
 # post_install_script = "gnome_version=$(gnome-shell --version  | awk '{print $NF}') && echo https://extensions.gnome.org/extension-data/appindicatorsupportrgcjonas.gmail.com.GNOME_VERSION.shell-extension.zip | sed -e s/GNOME_VERSION/$gnome_version/g"
 assets = [
     { source = "target/release/stremio-service", dest = "/usr/bin/stremio-service/stremio-service", mode = "755" },
-    { source = "resources/bin/linux/ffmpeg", dest = "/usr/bin/stremio-service/bin/ffmpeg", mode = "755" },
+    { source = "resources/bin/linux/ffmpeg", dest = "/usr/bin/stremio-service/ffmpeg", mode = "755" },
     # Should be possible to remove with `depends` but it shows an error at the moment.
-    { source = "resources/bin/linux/stremio-runtime", dest = "/usr/bin/stremio-service/bin/stremio-runtime", mode = "755" },
-    { source = "resources/bin/linux/ffprobe", dest = "/usr/bin/stremio-service/bin/ffprobe", mode = "755" },
+    { source = "resources/bin/linux/stremio-runtime", dest = "/usr/bin/stremio-service/stremio-runtime", mode = "755" },
+    { source = "resources/bin/linux/ffprobe", dest = "/usr/bin/stremio-service/ffprobe", mode = "755" },
     { source = "resources/bin/linux/server.js", dest = "/usr/bin/stremio-service/server.js", mode = "755" },
     { source = "LICENSE.md", dest = "/usr/bin/stremio-service/LICENSE.md", mode = "644" },
     { source = "resources/com.stremio.service.desktop", dest = "/usr/share/applications/com.stremio.service.desktop", mode = "644" },

@@ -117,7 +117,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         )?;
 
         let mut res = winres::WindowsResource::new();
-        res.set_toolkit_path("C:\\Program Files (x86)\\Windows Kits\\10\\bin\\10.0.22621.0\\x64");
         res.set("FileDescription", &description);
         res.set("LegalCopyright", &copyright);
         res.set_icon_with_id("resources/service.ico", "ICON");

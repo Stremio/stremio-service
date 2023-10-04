@@ -1,4 +1,4 @@
-# Copyright (C) 2017-2022 Smart code 203358507
+# Copyright (C) 2017-2023 Smart code 203358507
 name: MacOS Release
 
 on:
@@ -53,13 +53,12 @@ jobs:
       - name: Notarize app
         env:
           NOTARIZATION_PWD: ${{ secrets.APPLE_DEVACCOUNT_NOTARIZATION_APP_SPECIFIC_PWD }}
-          TEAM_ID: ${{ secrets.APPLE_DEVELOPER_TEAM_ID }}
+          TEAM_ID: ${{ secrets.TEAM_ID }}
         run: |
-          REQUEST=$(xcrun altool --notarize-app -t osx -f target/macos/StremioService.app.zip --primary-bundle-id com.smartcodeltd.stremio -u "ivo@linvo.com" -p "$NOTARIZATION_PWD" --asc-provider "$TEAM_ID" | awk '/RequestUUID =/ { print $3 }')
-          echo Got request ID: $REQUEST
-          sleep 480
-          echo Check the notarization status...
-          xcrun altool --notarization-info "$REQUEST" -u "ivo@linvo.com" -p "$NOTARIZATION_PWD"
+          echo "Create keychain profile"
+          xcrun notarytool store-credentials "notarytool-profile" --apple-id "ivo@linvo.com" --team-id "$TEAM_ID" --password "$NOTARIZATION_PWD"
+          echo "Notarize app"
+          xcrun notarytool submit target/macos/StremioService.app.zip --keychain-profile "notarytool-profile" --wait
           echo Stapling the app...
           xcrun stapler staple "target/macos/StremioService.app"
 

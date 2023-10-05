@@ -116,14 +116,15 @@ depends = "$auto"
 section = "Stremio;Media;Play;"
 priority = "optional"
 assets = [
-    ["target/release/stremio-service", "/usr/bin/stremio-service/stremio-service", "755"],
-    # We use a specific version of ffmpeg-jellyfin
-    ["resources/bin/linux/ffmpeg", "/usr/bin/stremio-service/ffmpeg", "755"],
+    ["resources/stremio-service", "/usr/bin/stremio-service", "755"],
+    ["target/release/stremio-service", "/usr/share/stremio-service/stremio-service", "755"],
     # Should be possible to remove with `depends` but it shows an error at the moment.
-    ["resources/bin/linux/node", "/usr/bin/stremio-service/node", "755"],
-    ["resources/bin/linux/ffprobe", "/usr/bin/stremio-service/ffprobe", "755"],
-    ["resources/bin/linux/server.js", "/usr/bin/stremio-service/server.js", "755"],
-    ["LICENSE.md", "/usr/bin/stremio-service/LICENSE.md", "644"],
+    ["resources/bin/linux/node", "/usr/share/stremio-service/node", "755"],
+    # We use a specific version of ffmpeg-jellyfin
+    ["resources/bin/linux/ffmpeg", "/usr/share/stremio-service/ffmpeg", "755"],
+    ["resources/bin/linux/ffprobe", "/usr/share/stremio-service/ffprobe", "755"],
+    ["resources/bin/linux/server.js", "/usr/share/stremio-service/server.js", "755"],
+    ["LICENSE.md", "/usr/share/stremio-service/LICENSE.md", "644"],
     ["resources/com.stremio.service.desktop", "/usr/share/applications/com.stremio.service.desktop", "644"],
     ["resources/com.stremio.service.svg", "/usr/share/icons/hicolor/scalable/apps/com.stremio.service.svg", "644"],
 ]
@@ -132,13 +133,14 @@ features = ["bundled"]
 [package.metadata.generate-rpm]
 # post_install_script = "gnome_version=$(gnome-shell --version  | awk '{print $NF}') && echo https://extensions.gnome.org/extension-data/appindicatorsupportrgcjonas.gmail.com.GNOME_VERSION.shell-extension.zip | sed -e s/GNOME_VERSION/$gnome_version/g"
 assets = [
-    { source = "target/release/stremio-service", dest = "/usr/bin/stremio-service/stremio-service", mode = "755" },
-    { source = "resources/bin/linux/ffmpeg", dest = "/usr/bin/stremio-service/bin/ffmpeg", mode = "755" },
+    { source = "resources/stremio-service", dest = "/usr/bin/stremio-service", mode = "755" },
+    { source = "target/release/stremio-service", dest = "/usr/share/stremio-service/stremio-service", mode = "755" },
     # Should be possible to remove with `depends` but it shows an error at the moment.
-    { source = "resources/bin/linux/node", dest = "/usr/bin/stremio-service/bin/node", mode = "755" },
-    { source = "resources/bin/linux/ffprobe", dest = "/usr/bin/stremio-service/bin/ffprobe", mode = "755" },
-    { source = "resources/bin/linux/server.js", dest = "/usr/bin/stremio-service/server.js", mode = "755" },
-    { source = "LICENSE.md", dest = "/usr/bin/stremio-service/LICENSE.md", mode = "644" },
+    { source = "resources/bin/linux/node", dest = "/usr/share/stremio-service/node", mode = "755" },
+    { source = "resources/bin/linux/ffmpeg", dest = "/usr/share/stremio-service/ffmpeg", mode = "755" },
+    { source = "resources/bin/linux/ffprobe", dest = "/usr/share/stremio-service/ffprobe", mode = "755" },
+    { source = "resources/bin/linux/server.js", dest = "/usr/share/stremio-service/server.js", mode = "755" },
+    { source = "LICENSE.md", dest = "/usr/share/stremio-service/LICENSE.md", mode = "644" },
     { source = "resources/com.stremio.service.desktop", dest = "/usr/share/applications/com.stremio.service.desktop", mode = "644" },
     { source = "resources/com.stremio.service.svg", dest = "/usr/share/icons/hicolor/scalable/apps/com.stremio.service.svg", mode = "644" },
 ]

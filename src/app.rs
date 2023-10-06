@@ -19,7 +19,7 @@ use url::Url;
 
 use crate::{
     args::Args,
-    config::{DATA_DIR, STREMIO_URL, UPDATE_ENDPOINT},
+    constants::{STREMIO_URL, UPDATE_ENDPOINT},
     server::Server,
     updater::Updater,
     util::load_icon,
@@ -52,9 +52,6 @@ pub struct Config {
     #[cfg_attr(any(not(feature = "bundled"), target_os = "windows"), allow(dead_code))]
     home_dir: PathBuf,
 
-    /// The data directory where the service will store data
-    data_dir: PathBuf,
-
     /// The lockfile that guards against running multiple instances of the service.
     lockfile: PathBuf,
 
@@ -72,12 +69,16 @@ impl Config {
     ///
     /// If `self_update` is `true` and it is a supported platform for the updater (see [`IS_UPDATER_SUPPORTED`])
     /// it will check for the existence of the `updater` binary at the given location.
-    pub fn new(args: Args, home_dir: PathBuf, service_bins_dir: PathBuf) -> Result<Self, Error> {
+    pub fn new(
+        args: Args,
+        home_dir: PathBuf,
+        cache_dir: PathBuf,
+        service_bins_dir: PathBuf,
+    ) -> Result<Self, Error> {
         let server =
             server::Config::at_dir(service_bins_dir).context("Server.js configuration failed")?;
 
-        let data_dir = home_dir.join(DATA_DIR);
-        let lockfile = data_dir.join("lock");
+        let lockfile = cache_dir.join("lock");
 
         let updater_endpoint = if let Some(endpoint) = args.updater_endpoint {
             endpoint
@@ -92,7 +93,6 @@ impl Config {
         Ok(Self {
             updater_endpoint,
             home_dir,
-            data_dir,
             lockfile,
             server,
             skip_update: args.skip_updater,
@@ -115,9 +115,6 @@ impl Application {
     }
 
     pub async fn run(&self) -> Result<(), anyhow::Error> {
-        std::fs::create_dir_all(&self.config.data_dir)
-            .context("Failed to create the service data directory")?;
-
         let mut lockfile = LockFile::open(&self.config.lockfile)?;
 
         if !lockfile.try_lock()? {
@@ -229,7 +226,7 @@ fn make_it_autostart(home_dir: impl AsRef<Path>) {
     #[cfg(target_os = "linux")]
     {
         use crate::{
-            config::{AUTOSTART_CONFIG_PATH, DESKTOP_FILE_NAME, DESKTOP_FILE_PATH},
+            constants::{AUTOSTART_CONFIG_PATH, DESKTOP_FILE_NAME, DESKTOP_FILE_PATH},
             util::create_dir_if_does_not_exists,
         };
 
@@ -251,7 +248,7 @@ fn make_it_autostart(home_dir: impl AsRef<Path>) {
     #[cfg(target_os = "macos")]
     {
         use crate::{
-            config::{APP_IDENTIFIER, APP_NAME, LAUNCH_AGENTS_PATH},
+            constants::{APP_IDENTIFIER, APP_NAME, LAUNCH_AGENTS_PATH},
             util::create_dir_if_does_not_exists,
         };
 

@@ -26,6 +26,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     let home_dir = dirs::home_dir().context("Failed to get home dir")?;
+    let cache_dir = dirs::cache_dir().context("Failed to get cache dir")?;
 
     #[cfg(feature = "bundled")]
     // use the installed dir if we've built the app with `bundled` feature.
@@ -37,7 +38,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .join("bin")
         .join(std::env::consts::OS);
 
-    let config = Config::new(cli, home_dir, service_bins_dir)?;
+    let config = Config::new(cli, home_dir, cache_dir, service_bins_dir)?;
     log::info!("Using service configuration: {:#?}", config);
 
     let application = Application::new(config);

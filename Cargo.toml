@@ -1,7 +1,7 @@
 # Copyright (C) 2017-2023 Smart code 203358507
 [package]
 name = "stremio-service"
-version = "0.1.6"
+version = "0.1.8"
 edition = "2021"
 authors = ["Stremio"]
 description = "Stremio service - Freedom to Stream"
@@ -118,14 +118,16 @@ depends = "$auto"
 section = "Stremio;Media;Play;"
 priority = "optional"
 assets = [
-    ["target/release/stremio-service", "/usr/bin/stremio-service/stremio-service", "755"],
+    ["resources/stremio-service", "/usr/bin/stremio-service", "755"],
+    ["target/release/stremio-service", "/usr/share/stremio-service/stremio-service", "755"],
+    ["resources/bin/linux/stremio-runtime", "/usr/share/stremio-service/stremio-runtime", "755"],
     # We use a specific version of ffmpeg-jellyfin
-    ["resources/bin/linux/ffmpeg", "/usr/bin/stremio-service/ffmpeg", "755"],
-    ["resources/bin/linux/stremio-runtime", "/usr/bin/stremio-service/stremio-runtime", "755"],
-    ["resources/bin/linux/ffprobe", "/usr/bin/stremio-service/ffprobe", "755"],
-    ["resources/bin/linux/server.js", "/usr/bin/stremio-service/server.js", "755"],
-    ["LICENSE.md", "/usr/bin/stremio-service/LICENSE.md", "644"],
+    ["resources/bin/linux/ffmpeg", "/usr/share/stremio-service/ffmpeg", "755"],
+    ["resources/bin/linux/ffprobe", "/usr/share/stremio-service/ffprobe", "755"],
+    ["resources/bin/linux/server.js", "/usr/share/stremio-service/server.js", "755"],
+    ["LICENSE.md", "/usr/share/stremio-service/LICENSE.md", "644"],
     ["resources/com.stremio.service.desktop", "/usr/share/applications/com.stremio.service.desktop", "644"],
+    ["resources/com.stremio.service.metainfo.xml", "/usr/share/metainfo/com.stremio.service.metainfo.xml", "644"],
     ["resources/com.stremio.service.svg", "/usr/share/icons/hicolor/scalable/apps/com.stremio.service.svg", "644"],
 ]
 features = ["bundled"]
@@ -133,13 +135,15 @@ features = ["bundled"]
 [package.metadata.generate-rpm]
 # post_install_script = "gnome_version=$(gnome-shell --version  | awk '{print $NF}') && echo https://extensions.gnome.org/extension-data/appindicatorsupportrgcjonas.gmail.com.GNOME_VERSION.shell-extension.zip | sed -e s/GNOME_VERSION/$gnome_version/g"
 assets = [
-    { source = "target/release/stremio-service", dest = "/usr/bin/stremio-service/stremio-service", mode = "755" },
-    { source = "resources/bin/linux/ffmpeg", dest = "/usr/bin/stremio-service/ffmpeg", mode = "755" },
-    { source = "resources/bin/linux/stremio-runtime", dest = "/usr/bin/stremio-service/stremio-runtime", mode = "755" },
-    { source = "resources/bin/linux/ffprobe", dest = "/usr/bin/stremio-service/ffprobe", mode = "755" },
-    { source = "resources/bin/linux/server.js", dest = "/usr/bin/stremio-service/server.js", mode = "755" },
-    { source = "LICENSE.md", dest = "/usr/bin/stremio-service/LICENSE.md", mode = "644" },
+    { source = "resources/stremio-service", dest = "/usr/bin/stremio-service", mode = "755" },
+    { source = "target/release/stremio-service", dest = "/usr/share/stremio-service/stremio-service", mode = "755" },
+    { source = "resources/bin/linux/stremio-runtime", dest = "/usr/share/stremio-service/stremio-runtime", mode = "755" },
+    { source = "resources/bin/linux/ffmpeg", dest = "/usr/share/stremio-service/ffmpeg", mode = "755" },
+    { source = "resources/bin/linux/ffprobe", dest = "/usr/share/stremio-service/ffprobe", mode = "755" },
+    { source = "resources/bin/linux/server.js", dest = "/usr/share/stremio-service/server.js", mode = "755" },
+    { source = "LICENSE.md", dest = "/usr/share/stremio-service/LICENSE.md", mode = "644" },
     { source = "resources/com.stremio.service.desktop", dest = "/usr/share/applications/com.stremio.service.desktop", mode = "644" },
+    { source = "resources/com.stremio.service.metainfo.xml", dest = "/usr/share/metainfo/com.stremio.service.metainfo.xml", mode = "644" },
     { source = "resources/com.stremio.service.svg", dest = "/usr/share/icons/hicolor/scalable/apps/com.stremio.service.svg", mode = "644" },
 ]
 # depends = "$auto, ffprobe (>=4.2.7)"

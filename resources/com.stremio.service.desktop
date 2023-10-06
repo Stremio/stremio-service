@@ -1,7 +1,7 @@
 [Desktop Entry]
 Name=Stremio Service
 Comment=Freedom To Stream
-Exec=sh -c "/usr/bin/stremio-service/stremio-service -o '%u'"
+Exec=sh -c "/usr/share/stremio-service/stremio-service -o '%u'"
 MimeType=x-scheme-handler/stremio;
 Terminal=false
 Type=Application

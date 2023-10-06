@@ -2,7 +2,7 @@
 
 pub mod app;
 pub mod args;
-pub mod config;
+pub mod constants;
 pub mod server;
 pub mod updater;
 pub mod util;

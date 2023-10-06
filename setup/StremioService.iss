@@ -150,7 +150,7 @@ Source: "{#MyAppExeLocation}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyAppRoot}LICENSE.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyAppResBinLocation}ffmpeg.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyAppResBinLocation}ffprobe.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#MyAppResBinLocation}node.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#MyAppResBinLocation}stremio-runtime.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyAppResBinLocation}server.js"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyAppResBinLocation}avcodec-58.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyAppResBinLocation}avdevice-58.dll"; DestDir: "{app}"; Flags: ignoreversion

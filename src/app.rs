@@ -55,7 +55,7 @@ pub struct Config {
     /// The lockfile that guards against running multiple instances of the service.
     lockfile: PathBuf,
 
-    /// The server.js configuration
+    /// The server configuration
     server: server::Config,
     pub updater_endpoint: Url,
     pub skip_update: bool,
@@ -65,7 +65,7 @@ pub struct Config {
 impl Config {
     /// Try to create by validating the application configuration.
     ///
-    /// It will initialize the server.js [`server::Config`] and if it fails it will return an error.
+    /// It will initialize the server [`server::Config`] and if it fails it will return an error.
     ///
     /// If `self_update` is `true` and it is a supported platform for the updater (see [`IS_UPDATER_SUPPORTED`])
     /// it will check for the existence of the `updater` binary at the given location.
@@ -76,7 +76,7 @@ impl Config {
         service_bins_dir: PathBuf,
     ) -> Result<Self, Error> {
         let server =
-            server::Config::at_dir(service_bins_dir).context("Server.js configuration failed")?;
+            server::Config::new(service_bins_dir).context("Server configuration failed")?;
 
         let lockfile = cache_dir.join("lock");
 

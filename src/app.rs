@@ -5,7 +5,7 @@ use fslock::LockFile;
 use log::{error, info};
 use rand::Rng;
 use rust_embed::RustEmbed;
-#[cfg(all(feature = "bundled", any(target_os = "linux", target_os = "macos")))]
+#[cfg(all(not(debug_assertions), any(target_os = "linux", target_os = "macos")))]
 use std::path::Path;
 use std::path::PathBuf;
 use tao::{
@@ -49,7 +49,7 @@ pub struct Application {
 pub struct Config {
     /// The Home directory of the user running the service
     /// used to make the application an autostart one (on `*nix` systems)
-    #[cfg_attr(any(not(feature = "bundled"), target_os = "windows"), allow(dead_code))]
+    #[cfg_attr(any(debug_assertions, target_os = "windows"), allow(dead_code))]
     home_dir: PathBuf,
 
     /// The lockfile that guards against running multiple instances of the service.
@@ -123,7 +123,7 @@ impl Application {
             return Ok(());
         }
 
-        #[cfg(all(feature = "bundled", any(target_os = "linux", target_os = "macos")))]
+        #[cfg(all(not(debug_assertions), any(target_os = "linux", target_os = "macos")))]
         make_it_autostart(self.config.home_dir.clone());
 
         // NOTE: we do not need to run the Fruitbasket event loop but we do need to keep `app` in-scope for the full lifecycle of the app
@@ -221,7 +221,7 @@ fn open_stremio_web(addon_manifest_url: Option<String>) {
 }
 
 /// Only for Linux and MacOS
-#[cfg(all(feature = "bundled", any(target_os = "linux", target_os = "macos")))]
+#[cfg(all(not(debug_assertions), any(target_os = "linux", target_os = "macos")))]
 fn make_it_autostart(home_dir: impl AsRef<Path>) {
     #[cfg(target_os = "linux")]
     {

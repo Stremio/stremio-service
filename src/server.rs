@@ -2,7 +2,7 @@
 
 use std::{path::PathBuf, process::Stdio, sync::Arc, time::Duration};
 
-use anyhow::{bail, Context, Error};
+use anyhow::{anyhow, bail, Context, Error};
 use futures::executor::block_on;
 use futures_util::TryFutureExt;
 use log::{error, info, trace};
@@ -102,6 +102,10 @@ impl Server {
                 #[cfg(target_os = "windows")]
                 command.creation_flags(CREATE_NO_WINDOW);
 
+                if self.inner.config.no_cors {
+                    command.env("NO_CORS", "1");
+                }
+
                 command
                     .env("FFMPEG_BIN", &self.inner.config.ffmpeg)
                     .env("FFPROBE_BIN", &self.inner.config.ffprobe)
@@ -112,12 +116,18 @@ impl Server {
                 info!("Starting Server: {:#?}", command);
 
                 match command.spawn() {
-                    Ok(new_process) => {
+                    Ok(mut new_process) => {
                         let process_pid = new_process.id();
                         info!("Server started. (PID {:?})", process_pid);
 
                         // wait given amount of time to make sure the server has started up and is running
                         sleep(WAIT_AFTER_START).await;
+
+                        // TODO: return or set the std_out in the Server for observing the log
+                        let std_out = new_process
+                            .stdout
+                            .take()
+                            .ok_or(anyhow!("Couldn't retrieve stdout of child process"))?;
 
                         let settings = self.settings().await?;
 
@@ -154,6 +164,8 @@ impl Server {
     // TODO: add some retry mechanism
     pub async fn settings(&self) -> anyhow::Result<ServerSettingsResponse> {
         // always use http as it's accessible at any time
+        // let server_url = self.inner.config.server
+
         let response = reqwest::get("http://127.0.0.1:11470/settings")
             .await
             .and_then(|response| response.error_for_status());
@@ -337,6 +349,9 @@ pub struct Config {
     ffprobe: PathBuf,
     /// server.js binary path
     server: PathBuf,
+    /// Whether or not to set the `NO_CORS` environment variable to `1`
+    /// and disable the CORS checks in the Server.
+    no_cors: bool,
 }
 
 impl Config {
@@ -351,7 +366,7 @@ impl Config {
     /// # Errors
     ///
     /// When one of the binaries required for running the server is missing.
-    pub fn at_dir(directory: PathBuf) -> Result<Self, Error> {
+    pub fn at_dir(directory: PathBuf, no_cors: bool) -> Result<Self, Error> {
         if directory.is_dir() {
             let node = directory.join(Self::node_bin(None)?);
             let server = directory.join("server.js");
@@ -414,6 +429,7 @@ impl Config {
                     ffmpeg,
                     ffprobe,
                     server,
+                    no_cors,
                 })
             }
         } else {

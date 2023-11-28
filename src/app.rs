@@ -3,6 +3,7 @@
 #[cfg(all(feature = "bundled", any(target_os = "linux", target_os = "macos")))]
 use std::path::Path;
 use std::{
+    default,
     fmt::{Debug, Display},
     path::PathBuf,
     str::FromStr,
@@ -105,8 +106,8 @@ impl Config {
     /// If `self_update` is `true` and it is a supported platform for the updater (see [`IS_UPDATER_SUPPORTED`])
     /// it will check for the existence of the `updater` binary at the given location.
     pub fn new(args: Args, home_dir: PathBuf, service_bins_dir: PathBuf) -> Result<Self, Error> {
-        let server =
-            server::Config::at_dir(service_bins_dir).context("Server.js configuration failed")?;
+        let server = server::Config::at_dir(service_bins_dir, args.no_cors)
+            .context("Server.js configuration failed")?;
 
         let data_dir = home_dir.join(DATA_DIR);
         let lockfile = data_dir.join("lock");

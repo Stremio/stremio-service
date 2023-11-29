@@ -25,6 +25,10 @@ jobs:
       - name: Homebrew setup
         id: set-up-homebrew
         uses: Homebrew/actions/setup-homebrew@master
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11.6' 
       - name: Utils
         run: |
           brew install graphicsmagick imagemagick

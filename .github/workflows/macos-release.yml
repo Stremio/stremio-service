@@ -22,9 +22,6 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 16
-      - name: Homebrew setup
-        id: set-up-homebrew
-        uses: Homebrew/actions/setup-homebrew@master
       - name: Setup Python
         uses: actions/setup-python@v4
         with:

@@ -31,7 +31,6 @@ jobs:
           python-version: '3.11.6' 
       - name: Utils
         run: |
-          brew install graphicsmagick imagemagick
           npm -g install appdmg
       - name: Build
         run: cargo build --release --features=bundled

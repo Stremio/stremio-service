@@ -6,7 +6,10 @@ use serde::Deserialize;
 use url::Url;
 
 #[cfg(target_os = "windows")]
-use chrono::{Datelike, Local};
+use {
+    chrono::{Datelike, Local},
+    winres_edit::{resource_type, Id, Resources},
+};
 
 static STREMIO_SERVER_URL: Lazy<Url> = Lazy::new(|| "https://dl.strem.io/server/".parse().unwrap());
 
@@ -41,7 +44,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     let current_dir = std::env::current_dir()?;
-    let platform_bins = current_dir.join("resources").join("bin").join(OS);
+    let resources = current_dir.join("resources");
+    let platform_bins = resources.join("bin").join(OS);
 
     #[cfg(not(feature = "offline-build"))]
     {
@@ -100,15 +104,69 @@ fn main() -> Result<(), Box<dyn Error>> {
     {
         let now = Local::now();
         let copyright = format!("Copyright © {} Smart Code OOD", now.year());
+        let description =
+            std::env::var("CARGO_PKG_DESCRIPTION").expect("Failed to read package description");
+
+        let icon_path = resources.join("service.ico");
+        let icon = icon_path.to_str().expect("Failed to find icon");
+
+        let runtime_info = [
+            ("ProductName", "Stremio Runtime"),
+            ("FileDescription", &description),
+            ("LegalCopyright", &copyright),
+            ("CompanyName", "Stremio"),
+            ("InternalName", "stremio-runtime"),
+            ("OriginalFilename", "stremio-runtime.exe"),
+        ];
+
+        edit_exe_resources(
+            &platform_bins.join("stremio-runtime.exe"),
+            &resources.join("runtime.ico"),
+            &runtime_info,
+        )?;
+
         let mut res = winres::WindowsResource::new();
-        res.set(
-            "FileDescription",
-            &std::env::var("CARGO_PKG_DESCRIPTION").unwrap(),
-        );
+        res.set("FileDescription", &description);
         res.set("LegalCopyright", &copyright);
-        res.set_icon_with_id("resources/service.ico", "ICON");
+        res.set_icon_with_id(icon, "ICON");
         res.compile().unwrap();
     }
+
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn edit_exe_resources(
+    file_path: &PathBuf,
+    icon_path: &PathBuf,
+    info: &[(&str, &str)],
+) -> Result<(), Box<dyn Error>> {
+    let icon = std::fs::File::open(icon_path)?;
+    let icon_dir = ico::IconDir::read(icon).unwrap();
+
+    let mut resources = Resources::new(file_path);
+    resources.load()?;
+    resources.open()?;
+
+    for (i, entry) in icon_dir.entries().iter().enumerate() {
+        resources
+            .find(resource_type::ICON, Id::Integer((i as u16) + 1))
+            .expect(&format!("Failed to find icon {}", i))
+            .replace(entry.data())?
+            .update()?;
+    }
+
+    match resources.get_version_info() {
+        Ok(version_info) => match version_info {
+            Some(mut version_info) => {
+                version_info.insert_strings(info).update()?;
+            }
+            _ => {}
+        },
+        Err(_) => eprintln!("Failed to get version info"),
+    }
+
+    resources.close();
 
     Ok(())
 }

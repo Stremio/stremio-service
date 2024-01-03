@@ -37,13 +37,13 @@ const supportedArguments = Object.freeze({
     },
     dry_run: {
         description:
-            "Do not upload the descriptor to S3. Just print it to stdout. The desctiptor is printed even if --quiet is set.",
+            "Do not upload the descriptor to S3. Just print it to stdout. The descriptor is printed even if --quiet is set.",
         default: false,
         parse: parseBooleanArgument,
     },
     wait_all: {
         description:
-            "By default at least one file is required to produce a descriptor. This flag will cause the sctipt to exit (without error) if not all files are uploaded before generating the descriptor.",
+            "By default at least one file is required to produce a descriptor. This flag will cause the script to exit (without error) if not all files are uploaded before generating the descriptor.",
         default: false,
         parse: parseBooleanArgument,
     },

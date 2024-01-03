@@ -22,12 +22,12 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 16
-      - name: Homebrew setup
-        id: set-up-homebrew
-        uses: Homebrew/actions/setup-homebrew@master
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11.6' 
       - name: Utils
         run: |
-          brew install graphicsmagick imagemagick
           npm -g install appdmg
       - name: Build
         run: cargo build --release --features=bundled
@@ -53,13 +53,12 @@ jobs:
       - name: Notarize app
         env:
           NOTARIZATION_PWD: ${{ secrets.APPLE_DEVACCOUNT_NOTARIZATION_APP_SPECIFIC_PWD }}
-          TEAM_ID: ${{ secrets.APPLE_DEVELOPER_TEAM_ID }}
+          TEAM_ID: ${{ secrets.TEAM_ID }}
         run: |
-          REQUEST=$(xcrun altool --notarize-app -t osx -f target/macos/StremioService.app.zip --primary-bundle-id com.smartcodeltd.stremio -u "ivo@linvo.com" -p "$NOTARIZATION_PWD" --asc-provider "$TEAM_ID" | awk '/RequestUUID =/ { print $3 }')
-          echo Got request ID: $REQUEST
-          sleep 480
-          echo Check the notarization status...
-          xcrun altool --notarization-info "$REQUEST" -u "ivo@linvo.com" -p "$NOTARIZATION_PWD"
+          echo "Create keychain profile"
+          xcrun notarytool store-credentials "notarytool-profile" --apple-id "ivo@linvo.com" --team-id "$TEAM_ID" --password "$NOTARIZATION_PWD"
+          echo "Notarize app"
+          xcrun notarytool submit target/macos/StremioService.app.zip --keychain-profile "notarytool-profile" --wait
           echo Stapling the app...
           xcrun stapler staple "target/macos/StremioService.app"
 
@@ -89,7 +88,7 @@ jobs:
       - name: Zip release for macos
         uses: vimtor/action-zip@v1.1
         with:
-          files: resources/bin/macos/ffmpeg resources/bin/macos/ffprobe resources/bin/macos/node target/release/stremio-service resources/bin/macos/server.js LICENSE.md
+          files: resources/bin/macos/ffmpeg resources/bin/macos/ffprobe resources/bin/macos/stremio-runtime target/release/stremio-service resources/bin/macos/server.js LICENSE.md
           dest: stremio-service-macos.zip
       - name: Get current date
         id: date

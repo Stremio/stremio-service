@@ -153,8 +153,8 @@ cargo macos && create-dmg --overwrite target/macos/*.app target/macos
 
 1. Bump version and update Flatpak
 - Bump version in `Cargo.toml`
-- Flatpak packages - necessary to add the new version and it's date to the [com.stremio.Service.appdata.xml](./flatpak/com.stremio.Service.appdata.xml) file.
-- Commit `Cargo.toml`, `Cargo.lock` and `flatpak/com.stremio.Service.appdata.xml`.
+- Flatpak packages - necessary to add the new version and it's date to the [com.stremio.Service.appdata.xml](./resources/com.stremio.service.metainfo.xml) file.
+- Commit `Cargo.toml`, `Cargo.lock` and `resources/com.stremio.service.metainfo.xml`.
 
 2. Make a new tag
 

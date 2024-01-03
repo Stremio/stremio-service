@@ -3,7 +3,9 @@
 use once_cell::sync::Lazy;
 use url::Url;
 
-pub const DATA_DIR: &str = ".stremio-service";
+/// Default Stremio web url
+pub static DEV_STREMIO_URL: Lazy<Url> = Lazy::new(|| "https://localhost:8080".parse().unwrap());
+/// Production Stremio web url
 pub static STREMIO_URL: Lazy<Url> = Lazy::new(|| "https://web.stremio.com".parse().unwrap());
 pub const APP_IDENTIFIER: &str = "com.stremio.service";
 pub const APP_NAME: &str = "StremioService";

@@ -11,14 +11,16 @@ use anyhow::Context;
 use clap::Parser;
 use env_logger::Env;
 
-use stremio_service::app::{AddonUrl, Application, Config, StremioWeb};
-use stremio_service::args::Args;
+use stremio_service::{
+    app::{AddonUrl, Application, Config, StremioWeb},
+    cli::Cli,
+};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
 
-    let cli = Args::parse();
+    let cli = Cli::parse();
 
     // Handles `stremio://` urls by replacing the custom scheme with `https://`
     // and opening it.
@@ -32,6 +34,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     let home_dir = dirs::home_dir().context("Failed to get home dir")?;
+    let cache_dir = dirs::cache_dir().context("Failed to get cache dir")?;
 
     #[cfg(feature = "bundled")]
     // use the installed dir if we've built the app with `bundled` feature.
@@ -43,7 +46,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .join("bin")
         .join(std::env::consts::OS);
 
-    let config = Config::new(cli, home_dir, service_bins_dir)?;
+    let config = Config::new(cli, home_dir, cache_dir, service_bins_dir)?;
     log::info!("Using service configuration: {:#?}", config);
 
     let application = Application::new(config);

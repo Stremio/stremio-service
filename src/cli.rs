@@ -5,7 +5,7 @@ use url::Url;
 
 #[derive(Parser, Debug, Clone)]
 #[command(author, version, about, long_about = None)]
-pub struct Args {
+pub struct Cli {
     /// Whether or not to skip the updater
     ///
     /// This options is not used for `*nix` systems

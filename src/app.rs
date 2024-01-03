@@ -3,7 +3,6 @@
 #[cfg(all(feature = "bundled", any(target_os = "linux", target_os = "macos")))]
 use std::path::Path;
 use std::{
-    default,
     fmt::{Debug, Display},
     path::PathBuf,
     str::FromStr,
@@ -30,8 +29,8 @@ use urlencoding::encode;
 
 use crate::{
     app::tray_menu::ServerAction,
-    args::Args,
-    config::{DATA_DIR, STREMIO_URL, UPDATE_ENDPOINT},
+    cli::Cli,
+    constants::{UPDATE_ENDPOINT, STREMIO_URL},
     server::{self, Info, Server, DEFAULT_SERVER_URL},
     updater::Updater,
 };
@@ -86,12 +85,12 @@ pub struct Config {
     home_dir: PathBuf,
 
     /// The data directory where the service will store data
-    data_dir: PathBuf,
+    // data_dir: PathBuf,
 
     /// The lockfile that guards against running multiple instances of the service.
     lockfile: PathBuf,
 
-    /// The server.js configuration
+    /// The server configuration
     server: server::Config,
     pub updater_endpoint: Url,
     pub skip_update: bool,
@@ -101,22 +100,26 @@ pub struct Config {
 impl Config {
     /// Try to create by validating the application configuration.
     ///
-    /// It will initialize the server.js [`server::Config`] and if it fails it will return an error.
+    /// It will initialize the server [`server::Config`] and if it fails it will return an error.
     ///
     /// If `self_update` is `true` and it is a supported platform for the updater (see [`IS_UPDATER_SUPPORTED`])
     /// it will check for the existence of the `updater` binary at the given location.
-    pub fn new(args: Args, home_dir: PathBuf, service_bins_dir: PathBuf) -> Result<Self, Error> {
-        let server = server::Config::at_dir(service_bins_dir, args.no_cors)
-            .context("Server.js configuration failed")?;
+    pub fn new(
+        cli: Cli,
+        home_dir: PathBuf,
+        cache_dir: PathBuf,
+        service_bins_dir: PathBuf,
+    ) -> Result<Self, Error> {
+        let server = server::Config::at_dir(service_bins_dir, cli.no_cors)
+            .context("Server configuration failed")?;
 
-        let data_dir = home_dir.join(DATA_DIR);
-        let lockfile = data_dir.join("lock");
+        let lockfile = cache_dir.join("lock");
 
-        let updater_endpoint = if let Some(endpoint) = args.updater_endpoint {
+        let updater_endpoint = if let Some(endpoint) = cli.updater_endpoint {
             endpoint
         } else {
             let mut url = Url::parse(Self::get_random_updater_endpoint().as_str())?;
-            if args.release_candidate {
+            if cli.release_candidate {
                 url.query_pairs_mut().append_pair("rc", "true");
             }
             url
@@ -125,11 +128,10 @@ impl Config {
         Ok(Self {
             updater_endpoint,
             home_dir,
-            data_dir,
             lockfile,
             server,
-            skip_update: args.skip_updater,
-            force_update: args.force_update,
+            skip_update: cli.skip_updater,
+            force_update: cli.force_update,
         })
     }
 
@@ -151,9 +153,6 @@ impl Application {
     }
 
     pub async fn run(&self) -> Result<(), anyhow::Error> {
-        std::fs::create_dir_all(&self.config.data_dir)
-            .context("Failed to create the service data directory")?;
-
         let mut lockfile = LockFile::open(&self.config.lockfile)?;
 
         if !lockfile.try_lock()? {
@@ -194,7 +193,7 @@ impl Application {
             .await
             .context("Failed to start Server")?;
         let (server_url_sender, server_url_receiver) = tokio::sync::watch::channel(None);
-        self.server.run_logger(server_url_sender);
+        // self.server.run_logger(server_url_sender);
 
         let (action_sender, action_receiver) = tokio::sync::watch::channel(None);
         let (status_sender, status_receiver) = tokio::sync::mpsc::channel(5);
@@ -243,7 +242,17 @@ impl Application {
                                 }
                             });
 
-                    StremioWeb::OpenWeb { server_url }.open()
+                    // TODO: auto-detect if it's running
+                    #[cfg(debug_assertions)]
+                    let web_url = crate::constants::DEV_STREMIO_URL.to_owned();
+                    #[cfg(not(debug_assertions))]
+                    let web_url = STREMIO_URL.to_owned();
+
+                    StremioWeb::OpenWeb {
+                        server_url,
+                        web_url: Some(web_url),
+                    }
+                    .open()
                 }
                 Event::MenuEvent { menu_id, .. } if menu_id == *QUIT_MENU => {
                     *control_flow = ControlFlow::Exit;
@@ -427,7 +436,11 @@ impl Debug for AddonUrl {
 
 pub enum StremioWeb {
     Addon(AddonUrl),
-    OpenWeb { server_url: Option<Url> },
+    OpenWeb {
+        /// Defaults to [`STREMIO_URL`] if not passed.
+        web_url: Option<Url>,
+        server_url: Option<Url>,
+    },
 }
 
 impl StremioWeb {
@@ -435,16 +448,19 @@ impl StremioWeb {
         let url_to_open = match self {
             StremioWeb::Addon(addon_url) => addon_url.to_url(),
             StremioWeb::OpenWeb {
-                server_url: Some(server_url),
+                web_url,
+                server_url,
             } => {
-                let mut stremio_url = STREMIO_URL.clone();
+                let mut web_url = web_url.unwrap_or(STREMIO_URL.to_owned());
 
-                let query = format!("streamingServer={}", encode(server_url.as_ref()));
+                if let Some(server_url) = server_url {
+                    let query = format!("streamingServer={}", encode(server_url.as_ref()));
 
-                stremio_url.set_query(Some(&query));
-                stremio_url
+                    web_url.set_query(Some(&query));
+                }
+
+                web_url
             }
-            StremioWeb::OpenWeb { server_url: None } => STREMIO_URL.clone(),
         };
 
         match open::that(url_to_open.to_string()) {

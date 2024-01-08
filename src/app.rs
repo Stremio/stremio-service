@@ -13,6 +13,7 @@ use anyhow::{bail, Context, Error};
 use fslock::LockFile;
 use log::{debug, error, info};
 use rand::Rng;
+use reqwest::StatusCode;
 use rust_embed::RustEmbed;
 use serde::{Deserialize, Serialize};
 use tao::{
@@ -249,15 +250,11 @@ impl Application {
                                 }
                             });
 
-                    // TODO: auto-detect if it's running
-                    #[cfg(debug_assertions)]
-                    let web_url = crate::constants::DEV_STREMIO_URL.to_owned();
-                    #[cfg(not(debug_assertions))]
-                    let web_url = STREMIO_URL.to_owned();
+                    let web_url = futures::executor::block_on(Self::detect_web_url());
 
                     StremioWeb::OpenWeb {
                         server_url,
-                        web_url: Some(web_url),
+                        web_url,
                     }
                     .open()
                 }
@@ -307,6 +304,33 @@ impl Application {
         let duration = Self::SERVER_STATUS_EVERY;
 
         duration
+    }
+
+    /// Detect custom web url
+    ///
+    /// At this point just see if the Dev server returns successful response
+    pub async fn detect_web_url() -> Option<Url> {
+        let client = reqwest::Client::builder()
+            .danger_accept_invalid_certs(true)
+            .build()
+            .ok()?;
+
+        match client
+            .get(crate::constants::DEV_STREMIO_URL.to_owned())
+            .send()
+            .await
+            .and_then(|response| response.error_for_status())
+        {
+            Ok(response) if response.status() == StatusCode::OK => {
+                Some(crate::constants::DEV_STREMIO_URL.to_owned())
+            }
+            Ok(_) => None,
+            Err(err) => {
+                error!("{err}");
+
+                None
+            }
+        }
     }
 
     async fn run_tray_status_updater(
@@ -587,8 +611,26 @@ fn register_apple_event_callbacks() -> fruitbasket::FruitApp<'static> {
             match open_url.parse::<AddonUrl>() {
                 Ok(addon_url) => StremioWeb::Addon(addon_url).open(),
                 Err(err) => {
-                    error!("{err}");
-                    StremioWeb::OpenWeb { server_url: None }.open()
+                    // no need to pass the url to stremio-web if it's the default one.
+                    let server_url =
+                        server_url_receiver
+                            .borrow()
+                            .to_owned()
+                            .and_then(|server_url| {
+                                info!("Server url from watch Channel: {}", server_url);
+                                if *DEFAULT_SERVER_URL == server_url {
+                                    None
+                                } else {
+                                    Some(server_url)
+                                }
+                            });
+                    error!("Error parsing addon url for schema event! {err}");
+                    warn!("Open stremio web instead...");
+                    StremioWeb::OpenWeb {
+                        server_url,
+                        web_url: futures::executor::block_on(Self::detect_web_url()),
+                    }
+                    .open()
                 }
             };
         }),

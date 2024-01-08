@@ -1,6 +1,7 @@
 // Copyright (C) 2017-2023 Smart code 203358507
 
 use anyhow::{anyhow, Context};
+use log::trace;
 use once_cell::sync::Lazy;
 use tao::{
     event_loop::EventLoop,
@@ -14,13 +15,14 @@ use crate::util::load_icon;
 use super::{Icons, ServerTrayStatus, TrayStatus};
 
 pub struct TrayMenu {
+    tray_status: TrayStatus,
     pub system_tray: SystemTray,
     /// Open stremio web menu element
     pub open: CustomMenuItem,
     /// Quit service element
     pub quit: CustomMenuItem,
     /// the server status menu item
-    pub server: CustomMenuItem,
+    pub server: Option<CustomMenuItem>,
     /// Restart the server
     pub restart: CustomMenuItem,
     /// Explicitly start the server
@@ -66,9 +68,10 @@ impl TrayMenu {
 
     pub fn with_menu(
         event_loop: &EventLoop<MenuEvent>,
-        status: impl Into<Option<TrayStatus>>,
+        status: TrayStatus,
     ) -> anyhow::Result<Self> {
-        let (tray_menu, server, open, quit, restart, start, stop) = Self::create_menu(status);
+        let (tray_menu, server, open, quit, restart, start, stop) =
+            Self::create_menu(status.clone());
         let icon_file = Icons::get("icon.png").ok_or_else(|| anyhow!("Failed to get icon file"))?;
         let icon = load_icon(icon_file.data.as_ref());
 
@@ -78,6 +81,7 @@ impl TrayMenu {
             .context("Failed to build the application system tray")?;
 
         Ok(Self {
+            tray_status: status,
             system_tray,
             open,
             quit,
@@ -88,9 +92,18 @@ impl TrayMenu {
         })
     }
 
+    /// Use when action on the server is taken (like restarting)
+    pub fn unset_server(&mut self) {
+        let mut tray_status = self.tray_status.clone();
+        tray_status.server_js = None;
+
+        self.set_status(tray_status)
+    }
+
     pub fn set_status(&mut self, status: TrayStatus) {
         let (tray_menu, server_status, open, quit, restart, start, stop) =
-            Self::create_menu(status);
+            Self::create_menu(status.clone());
+        trace!("Set system tray menu status: {status:#?}");
 
         self.system_tray.set_menu(&tray_menu);
         self.open = open;
@@ -105,23 +118,38 @@ impl TrayMenu {
         status: impl Into<Option<TrayStatus>>,
     ) -> (
         ContextMenu,
-        CustomMenuItem,
+        Option<CustomMenuItem>,
         CustomMenuItem,
         CustomMenuItem,
         CustomMenuItem,
         Option<CustomMenuItem>,
         Option<CustomMenuItem>,
     ) {
+        let status: Option<TrayStatus> = status.into();
+
+        let server_tray_status = status.unwrap_or_default().server_js;
+        let has_server_status = server_tray_status.is_some();
+        let server_running = matches!(server_tray_status, Some(ServerTrayStatus::Running { .. }));
+        let server_restarting = matches!(server_tray_status, Some(ServerTrayStatus::Restarting));
+        let server_stopped = matches!(server_tray_status, Some(ServerTrayStatus::Stopped));
+
         let mut tray_menu = ContextMenu::new();
         let open_item =
             tray_menu.add_item(MenuItemAttributes::new("Open Stremio Web").with_id(*OPEN_MENU));
 
-        let restart_server_item = tray_menu
-            .add_item(MenuItemAttributes::new("Restart Server").with_id(*RESTART_SERVER_MENU));
+        let restart_server_item = tray_menu.add_item(
+            MenuItemAttributes::new("Restart Server")
+                .with_enabled(has_server_status && !server_restarting)
+                .with_id(*RESTART_SERVER_MENU),
+        );
 
         #[cfg(debug_assertions)]
         let stop_server_item = Some(
-            tray_menu.add_item(MenuItemAttributes::new("Stop Server").with_id(*STOP_SERVER_MENU)),
+            tray_menu.add_item(
+                MenuItemAttributes::new("Stop Server")
+                    .with_enabled(has_server_status && server_running)
+                    .with_id(*STOP_SERVER_MENU),
+            ),
         );
         #[cfg(not(debug_assertions))]
         let stop_server_item = None;
@@ -130,7 +158,11 @@ impl TrayMenu {
         let start_server_item = None;
         #[cfg(debug_assertions)]
         let start_server_item = Some(
-            tray_menu.add_item(MenuItemAttributes::new("Start Server").with_id(*START_SERVER_MENU)),
+            tray_menu.add_item(
+                MenuItemAttributes::new("Start Server")
+                    .with_enabled(has_server_status && server_stopped)
+                    .with_id(*START_SERVER_MENU),
+            ),
         );
 
         let quit_item = tray_menu.add_item(MenuItemAttributes::new("Quit").with_id(*QUIT_MENU));
@@ -139,26 +171,25 @@ impl TrayMenu {
         let version_item = MenuItemAttributes::new(version_item_label.as_str()).with_enabled(false);
         tray_menu.add_item(version_item);
 
-        let status: Option<TrayStatus> = status.into();
-
         #[cfg(not(debug_assertions))]
         let debug = String::new();
         #[cfg(debug_assertions)]
         let debug = format!(
             "\nUpdated every: {}s",
-            crate::Application::SERVER_STATUS_EVERY.as_secs()
+            crate::Application::update_every().as_secs()
         );
 
-        let server_status = match status.unwrap_or_default().server_js {
-            ServerTrayStatus::Stopped => format!("Server is not running{debug}"),
-            ServerTrayStatus::Restarting => format!("Server is restarting{debug}"),
-            ServerTrayStatus::Running { info } => {
-                format!("Server v{} is running{debug}", info.version)
-            }
-        };
+        let server_item = server_tray_status.map(|server_tray_status| {
+            let server_status = match server_tray_status {
+                ServerTrayStatus::Stopped => format!("Server is not running{debug}"),
+                ServerTrayStatus::Restarting => format!("Server is restarting{debug}"),
+                ServerTrayStatus::Running { info } => {
+                    format!("Server v{} is running{debug}", info.version)
+                }
+            };
 
-        let server_item =
-            tray_menu.add_item(MenuItemAttributes::new(&server_status).with_enabled(false));
+            tray_menu.add_item(MenuItemAttributes::new(&server_status).with_enabled(false))
+        });
 
         (
             tray_menu,

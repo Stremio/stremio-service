@@ -21,7 +21,7 @@ use tao::{
 };
 use tokio::{
     select,
-    sync::{mpsc, watch},
+    sync::watch,
     time::{interval_at, Instant},
 };
 use url::Url;
@@ -30,7 +30,7 @@ use urlencoding::encode;
 use crate::{
     app::tray_menu::ServerAction,
     cli::Cli,
-    constants::{UPDATE_ENDPOINT, STREMIO_URL},
+    constants::{STREMIO_URL, UPDATE_ENDPOINT},
     server::{self, Info, Server, DEFAULT_SERVER_URL},
     updater::Updater,
 };
@@ -61,7 +61,7 @@ pub struct Application {
 
 #[derive(Debug, Default, Clone)]
 pub struct TrayStatus {
-    server_js: ServerTrayStatus,
+    server_js: Option<ServerTrayStatus>,
 }
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]
@@ -144,6 +144,7 @@ impl Config {
 
 impl Application {
     pub const SERVER_STATUS_EVERY: Duration = Duration::from_secs(30);
+    pub const DEV_SERVER_STATUS_EVERY: Duration = Duration::from_secs(3);
 
     pub fn new(config: Config) -> Self {
         Self {
@@ -192,11 +193,15 @@ impl Application {
             .start()
             .await
             .context("Failed to start Server")?;
-        let (server_url_sender, server_url_receiver) = tokio::sync::watch::channel(None);
+
+        info!("Server started successfully: {server_info:#?}");
         // self.server.run_logger(server_url_sender);
 
         let (action_sender, action_receiver) = tokio::sync::watch::channel(None);
-        let (status_sender, status_receiver) = tokio::sync::mpsc::channel(5);
+        let (status_sender, status_receiver) =
+            tokio::sync::watch::channel(Some(ServerTrayStatus::Running {
+                info: server_info.clone(),
+            }));
 
         tokio::spawn(Self::run_server_process_updater(
             action_receiver,
@@ -205,13 +210,13 @@ impl Application {
         ));
 
         let tray_status = TrayStatus {
-            server_js: ServerTrayStatus::Running {
+            server_js: Some(ServerTrayStatus::Running {
                 info: Info {
                     config: server_info.config.clone(),
                     version: server_info.version,
                     base_url: server_info.base_url,
                 },
-            },
+            }),
         };
 
         let mut tray_menu = TrayMenu::new(&event_loop)?;
@@ -224,6 +229,7 @@ impl Application {
         );
         tokio::spawn(stats_updater);
 
+        let server_url_receiver = self.server.server_url_receiver();
         event_loop.run(move |event, _event_loop, control_flow| {
             *control_flow = ControlFlow::Wait;
 
@@ -235,6 +241,7 @@ impl Application {
                             .borrow()
                             .to_owned()
                             .and_then(|server_url| {
+                                info!("Server url from watch Channel: {}", server_url);
                                 if *DEFAULT_SERVER_URL == server_url {
                                     None
                                 } else {
@@ -262,16 +269,25 @@ impl Application {
                     // do nothing
                 }
                 Event::MenuEvent { menu_id, .. } if menu_id == *START_SERVER_MENU => {
+                    // unset the server to disable the tray menu items.
+                    tray_menu.unset_server();
+
                     if let Err(err) = action_sender.send(Some(ServerAction::Start)) {
                         error!("Start server action: {err}")
                     }
                 }
                 Event::MenuEvent { menu_id, .. } if menu_id == *STOP_SERVER_MENU => {
+                    // unset the server to disable the tray menu items.
+                    tray_menu.unset_server();
+
                     if let Err(err) = action_sender.send(Some(ServerAction::Stop)) {
                         error!("Stop server action: {err}")
                     }
                 }
                 Event::MenuEvent { menu_id, .. } if menu_id == *RESTART_SERVER_MENU => {
+                    // unset the server to disable the tray menu items.
+                    tray_menu.unset_server();
+
                     if let Err(err) = action_sender.send(Some(ServerAction::Restart)) {
                         error!("Restart server action: {err}")
                     }
@@ -284,31 +300,40 @@ impl Application {
         });
     }
 
+    pub(crate) fn update_every() -> Duration {
+        #[cfg(debug_assertions)]
+        let duration = Self::DEV_SERVER_STATUS_EVERY;
+        #[cfg(not(debug_assertions))]
+        let duration = Self::SERVER_STATUS_EVERY;
+
+        duration
+    }
+
     async fn run_tray_status_updater(
         server: Server,
-        mut status_receiver: mpsc::Receiver<ServerTrayStatus>,
+        mut status_receiver: watch::Receiver<Option<ServerTrayStatus>>,
         event_loop_proxy: EventLoopProxy<MenuEvent>,
     ) {
-        let mut interval = interval_at(
-            Instant::now() + Self::SERVER_STATUS_EVERY,
-            Self::SERVER_STATUS_EVERY,
-        );
+        let mut interval = interval_at(Instant::now() + Self::update_every(), Self::update_every());
 
         loop {
             let status = select! {
                 _instant = interval.tick() => {
                     let info = server.update_status().await;
 
-                    let status = match info {
-                        Some(info) => ServerTrayStatus::Running { info: info.clone() },
-                        None => ServerTrayStatus::Stopped,
-                    };
+                    let status = info.map(|info| {
+                        ServerTrayStatus::Running { info: info.clone() }
+                    })
+                    // keep the latest status, this will ensure that when processing actions
+                    // like Stopping the server, we can know if we are transitioning from states.
+                    .or_else(|| status_receiver.borrow().clone());
 
-                    debug!("Server status is updated (every {}s)", Self::SERVER_STATUS_EVERY.as_secs());
+                    debug!("Server status is updated (every {}s)", Self::update_every().as_secs());
 
                     status
                 },
-                Some(status) = status_receiver.recv() => {
+                Ok(_) = status_receiver.changed() => {
+                    let status = status_receiver.borrow().clone();
                     debug!("Server status was updated by an action");
 
                     status
@@ -329,29 +354,44 @@ impl Application {
     /// when updating (like restarting, stopping and starting) the server process.
     async fn run_server_process_updater(
         mut receiver: watch::Receiver<Option<ServerAction>>,
-        status_sender: mpsc::Sender<ServerTrayStatus>,
+        status_sender: watch::Sender<Option<ServerTrayStatus>>,
         server: Server,
     ) {
         // errors only when sender is dropped.
         while receiver.changed().await.is_ok() {
             let action = *receiver.borrow();
+            info!("Action initialised: {action:?}");
+
+            let action = match action {
+                Some(action) => action,
+                None => {
+                    // we don't care about the initial value of None
+                    // because we've manually started the server
+                    continue;
+                }
+            };
+
+            // first make sure to update the status to None while we perform any of the actions
+            if let Err(_err) = status_sender.send(None) {
+                error!("Failed to update Server tray status on stop because receiver was already closed")
+            }
 
             match action {
-                Some(ServerAction::Start) => {
+                ServerAction::Start => {
                     // handle the result of starting the server
                     match server.start().await {
                         Ok(info) => {
                             // handle the result of closed channel receiver
                             if let Err(_err) =
-                                status_sender.send(ServerTrayStatus::Running { info }).await
+                                status_sender.send(Some(ServerTrayStatus::Running { info }))
                             {
-                                error!("Failed to update Server tray status on stop because receiver was already closed")
+                                error!("Failed to update Server tray status on stop because receiver was already closed");
                             };
                         }
                         Err(err) => error!("Failed to start Server: {err}"),
                     }
                 }
-                Some(ServerAction::Stop) => {
+                ServerAction::Stop => {
                     // handle the result of stopping the server
                     if let Err(err) = server.stop().await {
                         error!("Failed to stop Server: {err}");
@@ -360,19 +400,24 @@ impl Application {
                     // Even if stopping fails, then probably the process isn't running any more,
                     // we can safely assume it's in a Stopped state.
                     // handle the result of closed channel receiver
-                    if let Err(_err) = status_sender.send(ServerTrayStatus::Stopped).await {
+                    if let Err(_err) = status_sender.send(Some(ServerTrayStatus::Stopped)) {
                         error!("Failed to update Server tray status on stop because receiver was already closed")
                     }
                 }
-                Some(ServerAction::Restart) => {
+                ServerAction::Restart => {
                     // handle the result of closed channel receiver
-                    if let Err(_err) = status_sender.send(ServerTrayStatus::Restarting).await {
+                    if let Err(_err) = status_sender.send(Some(ServerTrayStatus::Restarting)) {
                         error!("Failed to update Server tray status on beginning of restart because receiver was already closed")
                     }
 
+                    info!("Server restarting...");
+
                     // handle the result of restarting the server
                     let status = match server.restart().await {
-                        Ok(info) => ServerTrayStatus::Running { info },
+                        Ok(info) => {
+                            info!("Server restarted successfully: {info:#?}");
+                            ServerTrayStatus::Running { info }
+                        }
                         Err(err) => {
                             error!("Failed to restart Server: {err}");
                             ServerTrayStatus::Stopped
@@ -380,14 +425,9 @@ impl Application {
                     };
 
                     // handle the result of closed channel receiver
-                    if let Err(_err) = status_sender.send(status).await {
+                    if let Err(_err) = status_sender.send(Some(status)) {
                         error!("Failed to update Server tray status on end of restart because receiver was already closed");
                     };
-                }
-                None => {
-                    // we don't care about the initial value of None
-                    // because we've manually started the server
-                    continue;
                 }
             };
         }

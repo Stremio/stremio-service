@@ -80,14 +80,20 @@ pub struct Server {
 struct ServerInner {
     pub config: Config,
     pub status: Mutex<ServerStatus>,
+    server_url_sender: watch::Sender<Option<Url>>,
+    pub server_url_receiver: watch::Receiver<Option<Url>>,
 }
 
 impl Server {
     pub fn new(config: Config) -> Server {
+        let (server_url_sender, server_url_receiver) = tokio::sync::watch::channel(None);
+
         Server {
             inner: Arc::new(ServerInner {
                 config,
                 status: Mutex::new(ServerStatus::Stopped),
+                server_url_sender,
+                server_url_receiver,
             }),
         }
     }
@@ -123,13 +129,67 @@ impl Server {
                         // wait given amount of time to make sure the server has started up and is running
                         sleep(WAIT_AFTER_START).await;
 
-                        // TODO: return or set the std_out in the Server for observing the log
                         let std_out = new_process
                             .stdout
                             .take()
                             .ok_or(anyhow!("Couldn't retrieve stdout of child process"))?;
 
-                        let settings = self.settings().await?;
+                        // TODO: return or set the std_out in the Server for observing the log
+                        let server_inner = self.inner.clone();
+                        tokio::spawn(async move {
+                            let mut line_reader = BufReader::new(std_out).lines();
+                            // can be called only once!
+                            loop {
+                                match line_reader.next_line().await {
+                                    Ok(Some(stdout_line)) => {
+                                        if let Some(server_url) =
+                                            stdout_line.strip_prefix("EngineFS server started at ")
+                                        {
+                                            match server_url.parse::<Url>() {
+                                                Ok(server_url) => {
+                                                    info!("Server url: {server_url}");
+                                                    server_inner.server_url_sender.send_replace(Some(server_url));
+                                                }
+                                                Err(err) => error!(
+                                                    "Error when passing {server_url} as server url: {err}"
+                                                ),
+                                            }
+                                        }
+                                    }
+                                    Ok(None) => {
+                                        // do nothing
+                                    }
+                                    Err(err) => error!("Error collecting Server logs: {err}"),
+                                }
+                            }
+                        });
+
+                        // `http` url for settings endpoint is always available
+                        let url = {
+                            let mut url_receiver = self.inner.server_url_receiver.clone();
+                            let mut base_url: Url;
+                            // wait for the value to get changed
+                            loop {
+                                match url_receiver.changed().await {
+                                    Ok(_) => {
+                                        if let Some(url) =
+                                            self.inner.server_url_receiver.borrow().as_ref()
+                                        {
+                                            base_url = url.clone();
+                                            break;
+                                        }
+                                    }
+                                    Err(err) => {
+                                        error!("{err}");
+                                        continue;
+                                    }
+                                }
+                            }
+                            base_url.set_scheme("http").unwrap();
+
+                            base_url
+                        };
+                        let settings = Self::settings(url).await?;
 
                         let info = Info {
                             config: self.inner.config.clone(),
@@ -138,6 +198,7 @@ impl Server {
                         };
                         // set new child process
                         *status_guard = ServerStatus::running(info.clone(), new_process);
+                        info!("Server has started and new process is set");
 
                         info
                     }
@@ -162,11 +223,8 @@ impl Server {
     }
 
     // TODO: add some retry mechanism
-    pub async fn settings(&self) -> anyhow::Result<ServerSettingsResponse> {
-        // always use http as it's accessible at any time
-        // let server_url = self.inner.config.server
-
-        let response = reqwest::get("http://127.0.0.1:11470/settings")
+    pub async fn settings(server_url: Url) -> anyhow::Result<ServerSettingsResponse> {
+        let response = reqwest::get(server_url.join("/settings").unwrap())
             .await
             .and_then(|response| response.error_for_status());
 
@@ -195,6 +253,10 @@ impl Server {
                 None => bail!("Can get stdout only once per process!"),
             },
         }
+    }
+
+    pub fn server_url_receiver(&self) -> watch::Receiver<Option<Url>> {
+        self.inner.server_url_receiver.clone()
     }
 
     /// Checks if the child process is still running and returns the information about the server configuration if it does.
@@ -226,7 +288,11 @@ impl Server {
     }
 
     /// Stops the server it's currently running ( [`ServerStatus::Running`] )
-    pub async fn stop(&self) -> anyhow::Result<()> {
+    ///
+    /// # Returns
+    /// `true` if there was a server PID that was stopped
+    /// `false` if the process has already been killed before this call
+    pub async fn stop(&self) -> anyhow::Result<bool> {
         let mut status = self.inner.status.lock().await;
 
         match &mut *status {
@@ -237,25 +303,37 @@ impl Server {
                     .await
                     .context("Failed to stop the server process.");
 
-                match id {
-                    Some(pid) => info!("Server was shut down. (PID #{})", pid),
-                    None => info!("Server is already shut down"),
-                }
+                let pid_stopped = match id {
+                    // if the server process was just killed only then wait till it's fully stopped.
+                    Some(pid) => {
+                        info!("Server was shut down. (PID #{})", pid);
+                        // wait for the server to fully stop
+                        sleep(WAIT_FOR_FULL_STOP).await;
+                        info!(
+                            "Waited {} seconds for the server to fully stop",
+                            WAIT_FOR_FULL_STOP.as_secs()
+                        );
 
-                return kill_result;
+                        true
+                    }
+                    None => {
+                        info!("Server is already shut down");
+                        false
+                    }
+                };
+
+                kill_result.map(|_| pid_stopped)
             }
-            ServerStatus::Stopped => info!("Server hasn't been started yet, do nothing."),
+            ServerStatus::Stopped => {
+                info!("Server hasn't been started yet, do nothing.");
+                Ok(false)
+            }
         }
-
-        Ok(())
     }
 
     pub async fn restart(&self) -> anyhow::Result<Info> {
         match self.stop().await {
-            Ok(_) => {
-                // wait for the server to fully stop
-                sleep(WAIT_FOR_FULL_STOP).await;
-            }
+            Ok(_) => {}
             // no need to wait if server stopping returned an error
             Err(err) => error!("Restarting (stop): {err}"),
         }
@@ -265,6 +343,7 @@ impl Server {
             .await
     }
 
+    #[deprecated]
     /// Can be called only once to spawn a logger task for the server!
     pub fn run_logger(&self, url_sender: watch::Sender<Option<Url>>) {
         let server = self.clone();
@@ -307,7 +386,7 @@ impl Server {
 impl Drop for Server {
     fn drop(&mut self) {
         match block_on(self.stop()) {
-            Ok(()) => {}
+            Ok(_) => {}
             Err(err) => error!("Failed to stop server on Drop, reason: {err}"),
         }
     }
@@ -471,9 +550,9 @@ impl Config {
     /// Returns the node binary name (Operating system dependent).
     ///
     /// Supports only 3 OSes:
-    /// - `linux` - returns `node`
-    /// - `macos` - returns `node`
-    /// - `windows` - returns `node.exe`
+    /// - `linux` - returns `stremio-runtime`
+    /// - `macos` - returns `stremio-runtime`
+    /// - `windows` - returns `stremio-runtime.exe`
     ///
     /// If no OS is supplied, [`std::env::consts::OS`] is used.
     ///
@@ -482,8 +561,8 @@ impl Config {
     /// If any other OS is supplied, see [`std::env::consts::OS`] for more details.
     pub fn node_bin(operating_system: Option<&str>) -> Result<&'static str, Error> {
         match operating_system.unwrap_or(std::env::consts::OS) {
-            "linux" | "macos" => Ok("node"),
-            "windows" => Ok("node.exe"),
+            "linux" | "macos" => Ok("stremio-runtime"),
+            "windows" => Ok("stremio-runtime.exe"),
             os => bail!("Operating system {} is not supported", os),
         }
     }

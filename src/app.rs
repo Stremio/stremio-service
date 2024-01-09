@@ -168,7 +168,7 @@ impl Application {
 
         // NOTE: we do not need to run the Fruitbasket event loop but we do need to keep `app` in-scope for the full lifecycle of the app
         #[cfg(target_os = "macos")]
-        let _fruit_app = register_apple_event_callbacks();
+        let _fruit_app = register_apple_event_callbacks(self.server.server_url_receiver());
 
         // Showing the system tray icon as soon as possible to give the user a feedback
         let event_loop: EventLoop<MenuEvent> = EventLoop::with_user_event();
@@ -597,7 +597,9 @@ fn make_it_autostart(home_dir: impl AsRef<Path>) {
 }
 
 #[cfg(target_os = "macos")]
-fn register_apple_event_callbacks() -> fruitbasket::FruitApp<'static> {
+fn register_apple_event_callbacks(
+    server_url_receiver: watch::Receiver<Option<Url>>,
+) -> fruitbasket::FruitApp<'static> {
     use fruitbasket::{FruitApp, FruitCallbackKey};
 
     let mut app = FruitApp::new();
@@ -625,10 +627,10 @@ fn register_apple_event_callbacks() -> fruitbasket::FruitApp<'static> {
                                 }
                             });
                     error!("Error parsing addon url for schema event! {err}");
-                    warn!("Open stremio web instead...");
+                    log::warn!("Open stremio web instead...");
                     StremioWeb::OpenWeb {
                         server_url,
-                        web_url: futures::executor::block_on(Self::detect_web_url()),
+                        web_url: futures::executor::block_on(Application::detect_web_url()),
                     }
                     .open()
                 }

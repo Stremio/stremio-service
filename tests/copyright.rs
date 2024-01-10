@@ -1,4 +1,4 @@
-// Copyright (C) 2017-2023 Smart code 203358507
+//! Copyright (C) 2017-2024 Smart code 203358507
 
 use std::{
     env, fs,
@@ -11,11 +11,11 @@ use walkdir::WalkDir;
 
 #[test]
 fn copyright() {
-    let include_dirs = vec!["src", "tests"];
+    let include_dirs = vec!["src", "tests", ".github/workflows"];
     let project_root = env!("CARGO_MANIFEST_DIR");
     let current_year = Utc::now().year().to_string();
     let regex_pattern = format!(
-        r"^\/\/ Copyright \(C\) 2017-{} Smart code 203358507",
+        r"^Copyright \(C\) 2017-{} Smart code 203358507",
         regex::escape(&current_year)
     );
     let copyright_regex = Regex::new(&regex_pattern).unwrap();

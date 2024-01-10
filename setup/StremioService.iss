@@ -11,7 +11,7 @@
   Str(Local[0]) + "." + Str(Local[1]) + "." + Str(Local[2])
 
 #define MyAppPublisher "Smart Code OOD"
-#define MyAppCopyright "Copyright © " + GetDateTimeString('yyyy', '', '') + " " + MyAppPublisher
+#define MyAppCopyright "Copyright © 2017-" + GetDateTimeString('yyyy', '', '') + " " + MyAppPublisher
 #define MyAppURL "https://www.stremio.com/"
 #define MyAppGoodbyeURL "https://www.strem.io/goodbye"
 

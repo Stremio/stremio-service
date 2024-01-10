@@ -226,6 +226,22 @@ The hash for StremioServiceSetup.exe is <exe sha256 hash>
 
 If the `--quiet` flag is used together with `--dry-run` only the descriptor is printed to `STDOUT`. In case of error the error is printed to `STDERR` and `STDOUT` is blank.
 
+## Development
+
+
+### Updating the copyright text in files
+You can update the copyright text using the following command, replacing the old Copyright with latest year:
+
+1. Install `sd`, alternative to `sed`: `cargo install sd`
+2. To replace 2023 with 2024, run:
+3. `find . \( -path ./target -prune -o -path ./.git -prune \) -o -type f -exec sd "Copyright (C) 2017-2023" "Copyright (C) 2017-2024" {} \;`
+ - we exclude `.git` and `target` folders and the README as it contains this string and will be replaced too.
+
+TODO: fix env. variables
+```
+THIS_YEAR=$(date +%Y) && LAST_YEAR=$(date +%Y -d "-1 year") && find . \( -path ./target -prune -o -path ./.git -prune \) -o -type f -exec sd '2017-\$LAST_YEAR' '2017-\$THIS_YEAR' {} \;
+```
+
 ## License
 
 GPL-2.0 [LICENSE.md](LICENSE.md)

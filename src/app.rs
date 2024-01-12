@@ -539,7 +539,7 @@ fn make_it_autostart(home_dir: impl AsRef<Path>) {
     #[cfg(target_os = "linux")]
     {
         use crate::{
-            config::{AUTOSTART_CONFIG_PATH, DESKTOP_FILE_NAME, DESKTOP_FILE_PATH},
+            constants::{AUTOSTART_CONFIG_PATH, DESKTOP_FILE_NAME, DESKTOP_FILE_PATH},
             util::create_dir_if_does_not_exists,
         };
 

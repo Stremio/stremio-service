@@ -129,8 +129,10 @@ impl TrayMenu {
 
         let server_tray_status = status.unwrap_or_default().server_js;
         let has_server_status = server_tray_status.is_some();
+        #[cfg(debug_assertions)]
         let server_running = matches!(server_tray_status, Some(ServerTrayStatus::Running { .. }));
         let server_restarting = matches!(server_tray_status, Some(ServerTrayStatus::Restarting));
+        #[cfg(debug_assertions)]
         let server_stopped = matches!(server_tray_status, Some(ServerTrayStatus::Stopped));
 
         let mut tray_menu = ContextMenu::new();

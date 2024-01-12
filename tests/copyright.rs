@@ -15,7 +15,7 @@ fn copyright() {
     let project_root = env!("CARGO_MANIFEST_DIR");
     let current_year = Utc::now().year().to_string();
     let regex_pattern = format!(
-        r"Copyright \(C\) 2017-{} Smart code 203358507",
+        r"Copyright \(C\) 2017-{} Smart Code OOD 203358507",
         regex::escape(&current_year)
     );
     let copyright_regex = Regex::new(&regex_pattern).unwrap();

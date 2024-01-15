@@ -1,4 +1,4 @@
-// Copyright (C) 2017-2023 Smart code 203358507
+//! Copyright (C) 2017-2024 Smart Code OOD 203358507
 
 use std::{
     env, fs,
@@ -11,14 +11,16 @@ use walkdir::WalkDir;
 
 #[test]
 fn copyright() {
-    let include_dirs = vec!["src", "tests"];
+    let include_dirs = vec!["src", "tests", ".github/workflows"];
     let project_root = env!("CARGO_MANIFEST_DIR");
     let current_year = Utc::now().year().to_string();
     let regex_pattern = format!(
-        r"^\/\/ Copyright \(C\) 2017-{} Smart code 203358507",
+        r"Copyright \(C\) 2017-{} Smart Code OOD 203358507",
         regex::escape(&current_year)
     );
     let copyright_regex = Regex::new(&regex_pattern).unwrap();
+
+    let mut results = vec![];
 
     for entry in WalkDir::new(project_root)
         .into_iter()
@@ -40,14 +42,25 @@ fn copyright() {
                 .unwrap_or(false);
 
             if parent_dir_included {
-                if let Ok(file) = fs::File::open(path) {
+                if let Ok(file) = fs::File::open(&path) {
                     let reader = io::BufReader::new(file);
                     if let Some(first_line) = reader.lines().next() {
                         let line = first_line.unwrap();
-                        assert!(copyright_regex.is_match(&line));
+
+                        results.push((path.to_owned(), copyright_regex.is_match(&line)));
                     }
                 }
             }
         }
     }
+
+    let copyright_missing_files = results
+        .into_iter()
+        .filter_map(|(file, is_match)| if is_match { None } else { Some(file) })
+        .collect::<Vec<_>>();
+
+    assert!(
+        copyright_missing_files.is_empty(),
+        "Copyright missing in files: {copyright_missing_files:#?}"
+    )
 }

@@ -1,4 +1,4 @@
-# Copyright (C) 2017-2023 Smart code 203358507
+# Copyright (C) 2017-2024 Smart Code OOD 203358507
 name: Windows Release
 
 on:
@@ -11,11 +11,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Rust setup
-        uses: actions-rs/toolchain@v1.0.6
-        with:
-          toolchain: stable
+        uses: dtolnay/rust-toolchain@stable
       - name: Build
         run: cargo build --release --features=bundled
       - name: Sign executables

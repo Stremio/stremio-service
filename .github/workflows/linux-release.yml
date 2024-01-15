@@ -1,4 +1,4 @@
-# Copyright (C) 2017-2023 Smart code 203358507
+# Copyright (C) 2017-2024 Smart Code OOD 203358507
 name: Linux Release
 
 on:
@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Rust setup
         uses: dtolnay/rust-toolchain@stable
       - name: Install dependencies

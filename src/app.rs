@@ -1,4 +1,4 @@
-// Copyright (C) 2017-2023 Smart code 203358507
+// Copyright (C) 2017-2024 Smart Code OOD 203358507
 
 #[cfg(all(feature = "bundled", any(target_os = "linux", target_os = "macos")))]
 use std::path::Path;

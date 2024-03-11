@@ -47,6 +47,8 @@ WizardImageFile={#SourcePath}\windows-installer.bmp
 WizardSmallImageFile={#SourcePath}\windows-installer-header.bmp
 SetupIconFile={#SourcePath}..\resources\service.ico
 UninstallDisplayIcon={app}\{#MyAppExeName},0
+SignTool=stremiosign
+SignedUninstaller=yes
 
 [Code]
 function ShouldSkipPage(PageID: Integer): Boolean;

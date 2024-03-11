@@ -29,7 +29,7 @@ jobs:
           dest: stremio-service-windows.zip
       - name: Installer
         run: |
-          & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' '/Sstremiosign=$qC:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x86\signtool.exe$q sign /f $q'+(Get-Location).Path+'\resources\certificates\smartcode-20211118-20241118.pfx$q /p ${{ secrets.WIN_CERT_PASSWORD }} /v $f' 'setup\StremioService.iss'
+          & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' '/Sstremiosign=$qC:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x86\signtool.exe$q sign /f $q.\resources\certificates\smartcode-20211118-20241118.pfx$q /p ${{ secrets.WIN_CERT_PASSWORD }} /v $f' 'setup\StremioService.iss'
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1

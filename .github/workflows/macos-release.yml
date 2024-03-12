@@ -28,7 +28,7 @@ jobs:
         run: |
           npm -g install appdmg
       - name: Build
-        run: cargo build --release --features=bundled
+        run: cargo build --release
       - name: Bundle
         run: |
           cargo run --bin bundle-macos

@@ -37,14 +37,15 @@ clap = { version = "4.0", features = ["derive"] }
 anyhow = "1"
 
 # Async executor
-tokio = { version = "1.27", features = ["fs", "macros", "rt-multi-thread"] }
+tokio = { version = "1.27", features = ["fs", "macros", "rt-multi-thread", "time", "process"] }
+futures = { version = "0.3", features = ["executor"] }
 
 # Logging
 env_logger = "0.10"
 log = "0.4"
 
 # Application window manager
-tao = { version = "0.19", features = ["tray"] }
+tao = { version = "0.20", features = ["tray"] }
 
 # Home dir
 dirs = "5.0"
@@ -59,7 +60,7 @@ semver = "1.0"
 # Open default app
 open = "4.1"
 # http calls
-reqwest = { version = "0.11", features = ["stream", "json"] }
+reqwest = { version = "0.11", features = ["stream", "json", "blocking"] }
 # embedding files in binary
 rust-embed = "6.4"
 serde = { version = "1", features = ["derive"] }

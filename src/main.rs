@@ -4,24 +4,32 @@
     all(target_os = "windows", feature = "bundled"),
     windows_subsystem = "windows"
 )]
+
 use std::error::Error;
 
 use anyhow::Context;
 use clap::Parser;
 use env_logger::Env;
 
-use stremio_service::app::{handle_stremio_protocol, Application, Config};
-use stremio_service::args::Args;
+use stremio_service::{
+    app::{AddonUrl, Application, Config, StremioWeb},
+    cli::Cli,
+};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
 
-    let cli = Args::parse();
+    let cli = Cli::parse();
 
+    // Handles `stremio://` urls by replacing the custom scheme with `https://`
+    // and opening it.
     if let Some(url) = cli.open.as_ref() {
         if !url.is_empty() {
-            handle_stremio_protocol(url.clone());
+            let addon_url = url.parse::<AddonUrl>();
+            if let Ok(addon_url) = addon_url {
+                StremioWeb::Addon(addon_url).open()
+            }
         }
     }
 

@@ -5,7 +5,7 @@ use url::Url;
 
 #[derive(Parser, Debug, Clone)]
 #[command(author, version, about, long_about = None)]
-pub struct Args {
+pub struct Cli {
     /// Whether or not to skip the updater
     ///
     /// This options is not used for `*nix` systems
@@ -40,4 +40,8 @@ pub struct Args {
     /// If empty URL or no url is provided, the service will skip this argument.
     #[clap(short, long)]
     pub open: Option<String>,
+
+    /// Disable CORS checks for the server.
+    #[clap(long)]
+    pub no_cors: bool,
 }

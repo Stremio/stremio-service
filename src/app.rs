@@ -1,32 +1,48 @@
 // Copyright (C) 2017-2024 Smart Code OOD 203358507
 
-use anyhow::{anyhow, Context, Error};
-use fslock::LockFile;
-use log::{error, info};
-use rand::Rng;
-use rust_embed::RustEmbed;
 #[cfg(all(feature = "bundled", any(target_os = "linux", target_os = "macos")))]
 use std::path::Path;
-use std::path::PathBuf;
+use std::{
+    fmt::{Debug, Display},
+    path::PathBuf,
+    str::FromStr,
+    sync::Arc,
+    time::Duration,
+};
+
+use anyhow::{bail, Context, Error};
+use fslock::LockFile;
+use log::{debug, error, info};
+use rand::Rng;
+use reqwest::StatusCode;
+use rust_embed::RustEmbed;
+use serde::{Deserialize, Serialize};
 use tao::{
     event::Event,
-    event_loop::{ControlFlow, EventLoop},
-    menu::{ContextMenu, MenuId, MenuItemAttributes},
-    system_tray::{SystemTray, SystemTrayBuilder},
-    TrayId,
+    event_loop::{ControlFlow, EventLoop, EventLoopProxy},
+};
+use tokio::{
+    select,
+    sync::watch,
+    time::{interval_at, Instant},
 };
 use url::Url;
-
-use crate::{
-    args::Args,
-    constants::{STREMIO_URL, UPDATE_ENDPOINT},
-    server::Server,
-    updater::Updater,
-    util::load_icon,
-};
 use urlencoding::encode;
 
-use crate::server;
+use crate::{
+    app::tray_menu::ServerAction,
+    cli::Cli,
+    constants::{STREMIO_URL, UPDATE_ENDPOINT},
+    server::{self, Info, Server, DEFAULT_SERVER_URL},
+    updater::Updater,
+};
+
+use self::tray_menu::{
+    MenuEvent, TrayMenu, OPEN_MENU, QUIT_MENU, RESTART_SERVER_MENU, START_SERVER_MENU,
+    STOP_SERVER_MENU,
+};
+
+pub mod tray_menu;
 
 /// Updater is supported only for non-linux operating systems.
 #[cfg(not(target_os = "linux"))]
@@ -45,12 +61,33 @@ pub struct Application {
     config: Config,
 }
 
+#[derive(Debug, Default, Clone)]
+pub struct TrayStatus {
+    server_js: Option<ServerTrayStatus>,
+}
+
+#[derive(Debug, Default, Clone, Deserialize, Serialize)]
+#[allow(clippy::large_enum_variant)]
+enum ServerTrayStatus {
+    #[default]
+    Stopped,
+    /// The server is currently being restarted
+    Restarting,
+    Running {
+        #[serde(flatten)]
+        info: Info,
+    },
+}
+
 #[derive(Debug, Clone)]
 pub struct Config {
     /// The Home directory of the user running the service
     /// used to make the application an autostart one (on `*nix` systems)
     #[cfg_attr(any(not(feature = "bundled"), target_os = "windows"), allow(dead_code))]
     home_dir: PathBuf,
+
+    /// The data directory where the service will store data
+    // data_dir: PathBuf,
 
     /// The lockfile that guards against running multiple instances of the service.
     lockfile: PathBuf,
@@ -70,21 +107,21 @@ impl Config {
     /// If `self_update` is `true` and it is a supported platform for the updater (see [`IS_UPDATER_SUPPORTED`])
     /// it will check for the existence of the `updater` binary at the given location.
     pub fn new(
-        args: Args,
+        cli: Cli,
         home_dir: PathBuf,
         cache_dir: PathBuf,
         service_bins_dir: PathBuf,
     ) -> Result<Self, Error> {
-        let server =
-            server::Config::new(service_bins_dir).context("Server configuration failed")?;
+        let server = server::Config::at_dir(service_bins_dir, cli.no_cors)
+            .context("Server configuration failed")?;
 
         let lockfile = cache_dir.join("lock");
 
-        let updater_endpoint = if let Some(endpoint) = args.updater_endpoint {
+        let updater_endpoint = if let Some(endpoint) = cli.updater_endpoint {
             endpoint
         } else {
             let mut url = Url::parse(Self::get_random_updater_endpoint().as_str())?;
-            if args.release_candidate {
+            if cli.release_candidate {
                 url.query_pairs_mut().append_pair("rc", "true");
             }
             url
@@ -95,10 +132,11 @@ impl Config {
             home_dir,
             lockfile,
             server,
-            skip_update: args.skip_updater,
-            force_update: args.force_update,
+            skip_update: cli.skip_updater,
+            force_update: cli.force_update,
         })
     }
+
     fn get_random_updater_endpoint() -> String {
         let mut rng = rand::thread_rng();
         let index = rng.gen_range(0..UPDATE_ENDPOINT.len());
@@ -107,6 +145,9 @@ impl Config {
 }
 
 impl Application {
+    pub const SERVER_STATUS_EVERY: Duration = Duration::from_secs(30);
+    pub const DEV_SERVER_STATUS_EVERY: Duration = Duration::from_secs(3);
+
     pub fn new(config: Config) -> Self {
         Self {
             server: Server::new(config.server.clone()),
@@ -128,11 +169,10 @@ impl Application {
 
         // NOTE: we do not need to run the Fruitbasket event loop but we do need to keep `app` in-scope for the full lifecycle of the app
         #[cfg(target_os = "macos")]
-        let _fruit_app = register_apple_event_callbacks();
+        let _fruit_app = register_apple_event_callbacks(self.server.server_url_receiver());
 
         // Showing the system tray icon as soon as possible to give the user a feedback
-        let event_loop = EventLoop::new();
-        let (mut system_tray, open_item_id, quit_item_id) = create_system_tray(&event_loop)?;
+        let event_loop: EventLoop<MenuEvent> = EventLoop::with_user_event();
 
         let current_version = env!("CARGO_PKG_VERSION")
             .parse()
@@ -148,78 +188,353 @@ impl Application {
             return Ok(());
         }
 
-        self.server.start().context("Failed to start server.js")?;
-        // cheap to clone and interior mutability
-        let mut server = self.server.clone();
+        let initial_server_tray_status = ServerTrayStatus::Stopped;
+        let (action_sender, action_receiver) = tokio::sync::watch::channel(None);
+        let (status_sender, status_receiver) =
+            tokio::sync::watch::channel(Some(initial_server_tray_status.clone()));
+        let status_sender = Arc::new(status_sender);
+        let tray_status = TrayStatus {
+            server_js: Some(initial_server_tray_status),
+        };
 
+        let mut tray_menu = TrayMenu::new(&event_loop)?;
+        tray_menu.set_status(tray_status);
+
+        // we manually start the server the first time, to make sure it starts with the app without any delay
+        // in child process start nor in updating the server status in the Tray menu
+        let start_server = self.server.clone();
+        let sender2 = status_sender.clone();
+        // Run the initial start-up of the server before running the tray status updater.
+        tokio::spawn(async move {
+            let server_info = start_server.start().await.expect("Failed to start Server");
+
+            sender2
+                .send(Some(ServerTrayStatus::Running {
+                    info: server_info.clone(),
+                }))
+                .expect("Failed to send server status over Watch channel");
+            info!("Server started successfully: {server_info:#?}");
+        });
+
+        let stats_updater = Self::run_tray_status_updater(
+            self.server.clone(),
+            status_receiver,
+            event_loop.create_proxy(),
+        );
+        tokio::spawn(stats_updater);
+
+        tokio::spawn(Self::run_server_process_updater(
+            action_receiver,
+            status_sender.clone(),
+            self.server.clone(),
+        ));
+
+        let server_url_receiver = self.server.server_url_receiver();
         event_loop.run(move |event, _event_loop, control_flow| {
             *control_flow = ControlFlow::Wait;
 
             match event {
-                Event::MenuEvent { menu_id, .. } => {
-                    if menu_id == open_item_id {
-                        open_stremio_web(None);
+                Event::MenuEvent { menu_id, .. } if menu_id == *OPEN_MENU => {
+                    // no need to pass the url to stremio-web if it's the default one.
+                    let server_url =
+                        server_url_receiver
+                            .borrow()
+                            .to_owned()
+                            .and_then(|server_url| {
+                                info!("Server url from watch Channel: {}", server_url);
+                                if *DEFAULT_SERVER_URL == server_url {
+                                    None
+                                } else {
+                                    Some(server_url)
+                                }
+                            });
+
+                    let web_url = futures::executor::block_on(Self::detect_web_url());
+
+                    StremioWeb::OpenWeb {
+                        server_url,
+                        web_url,
                     }
-                    if menu_id == quit_item_id {
-                        system_tray.take();
-                        *control_flow = ControlFlow::Exit;
-                    }
+                    .open()
+                }
+                Event::MenuEvent { menu_id, .. } if menu_id == *QUIT_MENU => {
+                    *control_flow = ControlFlow::Exit;
                 }
                 Event::LoopDestroyed => {
-                    if let Err(err) = server.stop() {
-                        error!("{err}")
+                    // Server will be stopped on drop!
+                    // do nothing
+                }
+                Event::MenuEvent { menu_id, .. } if menu_id == *START_SERVER_MENU => {
+                    // unset the server to disable the tray menu items.
+                    tray_menu.unset_server();
+
+                    if let Err(err) = action_sender.send(Some(ServerAction::Start)) {
+                        error!("Start server action: {err}")
                     }
                 }
+                Event::MenuEvent { menu_id, .. } if menu_id == *STOP_SERVER_MENU => {
+                    // unset the server to disable the tray menu items.
+                    tray_menu.unset_server();
+
+                    if let Err(err) = action_sender.send(Some(ServerAction::Stop)) {
+                        error!("Stop server action: {err}")
+                    }
+                }
+                Event::MenuEvent { menu_id, .. } if menu_id == *RESTART_SERVER_MENU => {
+                    // unset the server to disable the tray menu items.
+                    tray_menu.unset_server();
+
+                    if let Err(err) = action_sender.send(Some(ServerAction::Restart)) {
+                        error!("Restart server action: {err}")
+                    }
+                }
+                Event::UserEvent(menu_event) => match menu_event {
+                    MenuEvent::UpdateTray(new_tray) => tray_menu.set_status(new_tray),
+                },
                 _ => (),
             }
         });
     }
-}
 
-fn create_system_tray(
-    event_loop: &EventLoop<()>,
-) -> Result<(Option<SystemTray>, MenuId, MenuId), anyhow::Error> {
-    let mut tray_menu = ContextMenu::new();
-    let open_item = tray_menu.add_item(MenuItemAttributes::new("Open Stremio Web"));
-    let quit_item = tray_menu.add_item(MenuItemAttributes::new("Quit"));
+    pub(crate) fn update_every() -> Duration {
+        #[cfg(debug_assertions)]
+        let duration = Self::DEV_SERVER_STATUS_EVERY;
+        #[cfg(not(debug_assertions))]
+        let duration = Self::SERVER_STATUS_EVERY;
 
-    let version_item_label = format!("v{}", env!("CARGO_PKG_VERSION"));
-    let version_item = MenuItemAttributes::new(version_item_label.as_str()).with_enabled(false);
-    tray_menu.add_item(version_item);
+        duration
+    }
 
-    let icon_file = Icons::get("icon.png").ok_or_else(|| anyhow!("Failed to get icon file"))?;
-    let icon = load_icon(icon_file.data.as_ref());
+    /// Detect custom web url
+    ///
+    /// At this point just see if the Dev server returns successful response
+    pub async fn detect_web_url() -> Option<Url> {
+        let client = reqwest::Client::builder()
+            .danger_accept_invalid_certs(true)
+            .build()
+            .ok()?;
 
-    let system_tray = SystemTrayBuilder::new(icon, Some(tray_menu))
-        .with_id(TrayId::new("main"))
-        .build(event_loop)
-        .context("Failed to build the application system tray")?;
+        match client
+            .get(crate::constants::DEV_STREMIO_URL.to_owned())
+            .send()
+            .await
+            .and_then(|response| response.error_for_status())
+        {
+            Ok(response) if response.status() == StatusCode::OK => {
+                Some(crate::constants::DEV_STREMIO_URL.to_owned())
+            }
+            Ok(_) => None,
+            Err(err) => {
+                error!("{err}");
 
-    Ok((Some(system_tray), open_item.id(), quit_item.id()))
-}
+                None
+            }
+        }
+    }
 
-/// Handles `stremio://` urls by replacing the custom scheme with `https://`
-/// and opening it.
-/// Either opens the Addon installation link or the Web UI url
-pub fn handle_stremio_protocol(open_url: String) {
-    if open_url.starts_with("stremio://") {
-        let url = open_url.replace("stremio://", "https://");
-        open_stremio_web(Some(url));
+    async fn run_tray_status_updater(
+        server: Server,
+        mut status_receiver: watch::Receiver<Option<ServerTrayStatus>>,
+        event_loop_proxy: EventLoopProxy<MenuEvent>,
+    ) {
+        let mut interval = interval_at(Instant::now() + Self::update_every(), Self::update_every());
+        info!(
+            "Tray status updater has been started; Checking status every {} seconds",
+            Self::update_every().as_secs()
+        );
+
+        loop {
+            let status = select! {
+                _instant = interval.tick() => {
+                    let info = server.update_status().await;
+
+                    let status = info.map(|info| {
+                        ServerTrayStatus::Running { info: info.clone() }
+                    })
+                    // keep the latest status, this will ensure that when processing actions
+                    // like Stopping the server, we can know if we are transitioning from states.
+                    .or_else(|| status_receiver.borrow().clone());
+
+                    status
+                },
+                Ok(_) = status_receiver.changed() => {
+                    let status = status_receiver.borrow().clone();
+                    debug!("Server status was updated by either user or program action.");
+
+                    status
+                }
+            };
+            let tray_status = TrayStatus { server_js: status };
+
+            match event_loop_proxy.send_event(MenuEvent::UpdateTray(tray_status)) {
+                Ok(_) => {
+                    // do nothing
+                }
+                Err(err) => error!("Failed to send new status for tray menu. {err}"),
+            }
+        }
+    }
+
+    /// This updater makes sure that we don't block the event loop of `tao`
+    /// when updating (like restarting, stopping and starting) the server process.
+    async fn run_server_process_updater(
+        mut receiver: watch::Receiver<Option<ServerAction>>,
+        status_sender: Arc<watch::Sender<Option<ServerTrayStatus>>>,
+        server: Server,
+    ) {
+        info!("Server process updater has been started.");
+        // errors only when sender is dropped.
+        while receiver.changed().await.is_ok() {
+            let action = *receiver.borrow();
+            info!("Action initialised: {action:?}");
+
+            let action = match action {
+                Some(action) => action,
+                None => {
+                    // we don't care about the initial value of None
+                    // because we've manually started the server
+                    continue;
+                }
+            };
+
+            // first make sure to update the status to None while we perform any of the actions
+            if let Err(_err) = status_sender.send(None) {
+                error!("Failed to update Server tray status on stop because receiver was already closed")
+            }
+
+            match action {
+                ServerAction::Start => {
+                    // handle the result of starting the server
+                    match server.start().await {
+                        Ok(info) => {
+                            // handle the result of closed channel receiver
+                            if let Err(_err) =
+                                status_sender.send(Some(ServerTrayStatus::Running { info }))
+                            {
+                                error!("Failed to update Server tray status on stop because receiver was already closed");
+                            };
+                        }
+                        Err(err) => error!("Failed to start Server: {err}"),
+                    }
+                }
+                ServerAction::Stop => {
+                    // handle the result of stopping the server
+                    if let Err(err) = server.stop().await {
+                        error!("Failed to stop Server: {err}");
+                    }
+
+                    // Even if stopping fails, then probably the process isn't running any more,
+                    // we can safely assume it's in a Stopped state.
+                    // handle the result of closed channel receiver
+                    if let Err(_err) = status_sender.send(Some(ServerTrayStatus::Stopped)) {
+                        error!("Failed to update Server tray status on stop because receiver was already closed")
+                    }
+                }
+                ServerAction::Restart => {
+                    // handle the result of closed channel receiver
+                    if let Err(_err) = status_sender.send(Some(ServerTrayStatus::Restarting)) {
+                        error!("Failed to update Server tray status on beginning of restart because receiver was already closed")
+                    }
+
+                    info!("Server restarting...");
+
+                    // handle the result of restarting the server
+                    let status = match server.restart().await {
+                        Ok(info) => {
+                            info!("Server restarted successfully: {info:#?}");
+                            ServerTrayStatus::Running { info }
+                        }
+                        Err(err) => {
+                            error!("Failed to restart Server: {err}");
+                            ServerTrayStatus::Stopped
+                        }
+                    };
+
+                    // handle the result of closed channel receiver
+                    if let Err(_err) = status_sender.send(Some(status)) {
+                        error!("Failed to update Server tray status on end of restart because receiver was already closed");
+                    };
+                }
+            };
+        }
     }
 }
 
-fn open_stremio_web(addon_manifest_url: Option<String>) {
-    let mut url = STREMIO_URL.to_string();
-    if let Some(p) = addon_manifest_url {
-        url = format!("{}/#/addons?addon={}", STREMIO_URL, &encode(&p));
-    }
+/// Addon's `stremio://` prefixed url
+pub struct AddonUrl {
+    url: Url,
+}
 
-    match open::that(url) {
-        Ok(_) => info!("Opened Stremio Web in the browser"),
-        Err(e) => error!("Failed to open Stremio Web: {}", e),
+impl FromStr for AddonUrl {
+    type Err = anyhow::Error;
+
+    fn from_str(open_url: &str) -> Result<Self, Self::Err> {
+        if open_url.starts_with("stremio://") {
+            let url = open_url.replace("stremio://", "https://").parse::<Url>()?;
+
+            return Ok(Self { url });
+        }
+
+        bail!("Stremio's addon protocol url starts with stremio://")
     }
 }
 
+impl AddonUrl {
+    pub fn to_url(&self) -> Url {
+        self.url.clone()
+    }
+}
+
+impl Display for AddonUrl {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let stremio_protocol = self.url.to_string().replace("https://", "stremio://");
+
+        f.write_str(&stremio_protocol)
+    }
+}
+
+/// Debug printing line as a tuple - `AddonUrl(stremio://....)`
+impl Debug for AddonUrl {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("AddonUrl").field(&self.to_string()).finish()
+    }
+}
+
+pub enum StremioWeb {
+    Addon(AddonUrl),
+    OpenWeb {
+        /// Defaults to [`STREMIO_URL`] if not passed.
+        web_url: Option<Url>,
+        server_url: Option<Url>,
+    },
+}
+
+impl StremioWeb {
+    pub fn open(self) {
+        let url_to_open = match self {
+            StremioWeb::Addon(addon_url) => addon_url.to_url(),
+            StremioWeb::OpenWeb {
+                web_url,
+                server_url,
+            } => {
+                let mut web_url = web_url.unwrap_or(STREMIO_URL.to_owned());
+
+                if let Some(server_url) = server_url {
+                    let query = format!("streamingServer={}", encode(server_url.as_ref()));
+
+                    web_url.set_query(Some(&query));
+                }
+
+                web_url
+            }
+        };
+
+        match open::that(url_to_open.to_string()) {
+            Ok(_) => info!("Opened Stremio Web in the browser: {url_to_open}"),
+            Err(e) => error!("Failed to open {url_to_open} in Stremio Web: {}", e),
+        }
+    }
+}
 /// Only for Linux and MacOS
 #[cfg(all(feature = "bundled", any(target_os = "linux", target_os = "macos")))]
 fn make_it_autostart(home_dir: impl AsRef<Path>) {
@@ -284,7 +599,9 @@ fn make_it_autostart(home_dir: impl AsRef<Path>) {
 }
 
 #[cfg(target_os = "macos")]
-fn register_apple_event_callbacks() -> fruitbasket::FruitApp<'static> {
+fn register_apple_event_callbacks(
+    server_url_receiver: watch::Receiver<Option<Url>>,
+) -> fruitbasket::FruitApp<'static> {
     use fruitbasket::{FruitApp, FruitCallbackKey};
 
     let mut app = FruitApp::new();
@@ -294,7 +611,32 @@ fn register_apple_event_callbacks() -> fruitbasket::FruitApp<'static> {
         FruitCallbackKey::Method("handleEvent:withReplyEvent:"),
         Box::new(move |event| {
             let open_url: String = fruitbasket::parse_url_event(event);
-            handle_stremio_protocol(open_url);
+
+            match open_url.parse::<AddonUrl>() {
+                Ok(addon_url) => StremioWeb::Addon(addon_url).open(),
+                Err(err) => {
+                    // no need to pass the url to stremio-web if it's the default one.
+                    let server_url =
+                        server_url_receiver
+                            .borrow()
+                            .to_owned()
+                            .and_then(|server_url| {
+                                info!("Server url from watch Channel: {}", server_url);
+                                if *DEFAULT_SERVER_URL == server_url {
+                                    None
+                                } else {
+                                    Some(server_url)
+                                }
+                            });
+                    error!("Error parsing addon url for schema event! {err}");
+                    log::warn!("Open stremio web instead...");
+                    StremioWeb::OpenWeb {
+                        server_url,
+                        web_url: futures::executor::block_on(Application::detect_web_url()),
+                    }
+                    .open()
+                }
+            };
         }),
     );
 

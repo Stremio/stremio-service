@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::{Child, ChildStdout, Command},
-    sync::{watch, Mutex},
+    sync::{watch, RwLock},
     time::sleep,
 };
 use url::Url;
@@ -76,14 +76,6 @@ pub struct Server {
     inner: Arc<ServerInner>,
 }
 
-#[derive(Debug)]
-struct ServerInner {
-    pub config: Config,
-    pub status: Mutex<ServerStatus>,
-    server_url_sender: watch::Sender<Option<Url>>,
-    pub server_url_receiver: watch::Receiver<Option<Url>>,
-}
-
 impl Server {
     pub fn new(config: Config) -> Server {
         let (server_url_sender, server_url_receiver) = tokio::sync::watch::channel(None);
@@ -91,7 +83,7 @@ impl Server {
         Server {
             inner: Arc::new(ServerInner {
                 config,
-                status: Mutex::new(ServerStatus::Stopped),
+                status: RwLock::new(ServerStatus::Stopped),
                 server_url_sender,
                 server_url_receiver,
             }),
@@ -100,122 +92,125 @@ impl Server {
 
     /// Starts the server if it is in a stopped state ( [`ServerStatus::Stopped`] )
     pub async fn start(&self) -> Result<Info, Error> {
-        let mut status_guard = self.inner.status.lock().await;
-
-        let info = match &mut *status_guard {
-            ServerStatus::Stopped => {
-                let mut command = Command::new(&self.inner.config.node);
-                #[cfg(target_os = "windows")]
-                command.creation_flags(CREATE_NO_WINDOW);
-
-                if self.inner.config.no_cors {
-                    command.env("NO_CORS", "1");
-                }
-
-                command
-                    .env("FFMPEG_BIN", &self.inner.config.ffmpeg)
-                    .env("FFPROBE_BIN", &self.inner.config.ffprobe)
-                    .arg(&self.inner.config.server)
-                    .stdout(Stdio::piped())
-                    .kill_on_drop(true);
-
-                info!("Starting Server: {:#?}", command);
-
-                match command.spawn() {
-                    Ok(mut new_process) => {
-                        let process_pid = new_process.id();
-                        info!("Server started. (PID {:?})", process_pid);
-
-                        // wait given amount of time to make sure the server has started up and is running
-                        sleep(WAIT_AFTER_START).await;
-
-                        let std_out = new_process
-                            .stdout
-                            .take()
-                            .ok_or(anyhow!("Couldn't retrieve stdout of child process"))?;
-
-                        // TODO: return or set the std_out in the Server for observing the log
-                        let server_inner = self.inner.clone();
-                        tokio::spawn(async move {
-                            let mut line_reader = BufReader::new(std_out).lines();
-                            // can be called only once!
-                            loop {
-                                match line_reader.next_line().await {
-                                    Ok(Some(stdout_line)) => {
-                                        if let Some(server_url) =
-                                            stdout_line.strip_prefix("EngineFS server started at ")
-                                        {
-                                            match server_url.parse::<Url>() {
-                                                Ok(server_url) => {
-                                                    info!("Server url: {server_url}");
-                                                    server_inner.server_url_sender.send_replace(Some(server_url));
-                                                }
-                                                Err(err) => error!(
-                                                    "Error when passing {server_url} as server url: {err}"
-                                                ),
-                                            }
-                                        }
-                                    }
-                                    Ok(None) => {
-                                        // do nothing
-                                    }
-                                    Err(err) => error!("Error collecting Server logs: {err}"),
-                                }
-                            }
-                        });
-
-                        // `http` url for settings endpoint is always available
-                        let url = {
-                            let mut url_receiver = self.inner.server_url_receiver.clone();
-                            let mut base_url: Url;
-                            // wait for the value to get changed
-                            loop {
-                                match url_receiver.changed().await {
-                                    Ok(_) => {
-                                        if let Some(url) =
-                                            self.inner.server_url_receiver.borrow().as_ref()
-                                        {
-                                            base_url = url.clone();
-                                            break;
-                                        }
-                                    }
-                                    Err(err) => {
-                                        error!("{err}");
-                                        continue;
-                                    }
-                                }
-                            }
-                            base_url.set_scheme("http").unwrap();
-
-                            base_url
-                        };
-                        let settings = Self::settings(url).await?;
-
-                        let info = Info {
-                            config: self.inner.config.clone(),
-                            version: settings.values.server_version,
-                            base_url: settings.base_url,
-                        };
-                        // set new child process
-                        *status_guard = ServerStatus::running(info.clone(), new_process);
-                        info!("Server has started and new process is set");
-
-                        info
-                    }
-                    Err(err) => {
-                        error!("Server didn't start: {err}");
-
-                        bail!("Server didn't start: {err}")
-                    }
-                }
-            }
-            ServerStatus::Running { process, info } => {
+        // if status is running return early and release read lock
+        {
+            if let ServerStatus::Running { process, info } = &*self.inner.status.read().await {
                 info!(
                     "Server is already running (PID: {})",
                     process.id().unwrap_or_default()
                 );
 
-                info.clone()
+                return Ok(info.clone());
+            }
+        }
+
+        // otherwise, start a new process and only at the end override the status
+        let info = {
+            let mut command = Command::new(&self.inner.config.node);
+            #[cfg(target_os = "windows")]
+            command.creation_flags(CREATE_NO_WINDOW);
+
+            if self.inner.config.no_cors {
+                command.env("NO_CORS", "1");
+            }
+
+            command
+                .env("FFMPEG_BIN", &self.inner.config.ffmpeg)
+                .env("FFPROBE_BIN", &self.inner.config.ffprobe)
+                .arg(&self.inner.config.server)
+                .stdout(Stdio::piped())
+                .kill_on_drop(true);
+
+            info!("Starting Server: {:#?}", command);
+
+            match command.spawn() {
+                Ok(mut new_process) => {
+                    let process_pid = new_process.id();
+                    info!("Server started. (PID {:?})", process_pid);
+
+                    // wait given amount of time to make sure the server has started up and is running
+                    sleep(WAIT_AFTER_START).await;
+
+                    let std_out = new_process
+                        .stdout
+                        .take()
+                        .ok_or(anyhow!("Couldn't retrieve stdout of child process"))?;
+
+                    // TODO: return or set the std_out in the Server for observing the log
+                    let server_inner = self.inner.clone();
+                    tokio::spawn(async move {
+                        let mut line_reader = BufReader::new(std_out).lines();
+                        // can be called only once!
+                        loop {
+                            match line_reader.next_line().await {
+                                Ok(Some(stdout_line)) => {
+                                    if let Some(server_url) =
+                                        stdout_line.strip_prefix("EngineFS server started at ")
+                                    {
+                                        match server_url.parse::<Url>() {
+                                            Ok(server_url) => {
+                                                info!("Server url: {server_url}");
+                                                server_inner.server_url_sender.send_replace(Some(server_url));
+                                            }
+                                            Err(err) => error!(
+                                                "Error when passing {server_url} as server url: {err}"
+                                            ),
+                                        }
+                                    }
+                                    // TODO: Feature Server logging
+                                }
+                                Ok(None) => {
+                                    // do nothing
+                                }
+                                Err(err) => error!("Error collecting Server logs: {err}"),
+                            }
+                        }
+                    });
+
+                    // `http` url for settings endpoint is always available
+                    let url = {
+                        let mut url_receiver = self.inner.server_url_receiver.clone();
+                        let mut base_url: Url;
+                        // wait for the value to get changed
+                        loop {
+                            match url_receiver.changed().await {
+                                Ok(_) => {
+                                    if let Some(url) =
+                                        self.inner.server_url_receiver.borrow().as_ref()
+                                    {
+                                        base_url = url.clone();
+                                        break;
+                                    }
+                                }
+                                Err(err) => {
+                                    error!("{err}");
+                                    continue;
+                                }
+                            }
+                        }
+                        base_url.set_scheme("http").unwrap();
+
+                        base_url
+                    };
+                    let settings = Self::settings(url).await?;
+
+                    let info = Info {
+                        config: self.inner.config.clone(),
+                        version: settings.values.server_version,
+                        base_url: settings.base_url,
+                    };
+                    // set new child process
+                    *self.inner.status.write().await =
+                        ServerStatus::running(info.clone(), new_process);
+                    info!("Server has started and new process is set");
+
+                    info
+                }
+                Err(err) => {
+                    error!("Server didn't start: {err}");
+
+                    bail!("Server didn't start: {err}")
+                }
             }
         };
 
@@ -246,7 +241,7 @@ impl Server {
     }
 
     pub async fn stdout(&self) -> Result<ChildStdout, Error> {
-        match &mut *self.inner.status.lock().await {
+        match &mut *self.inner.status.write().await {
             ServerStatus::Stopped => bail!("Server is not running"),
             ServerStatus::Running { process, .. } => match process.stdout.take() {
                 Some(stdout) => Ok(stdout),
@@ -264,27 +259,32 @@ impl Server {
     /// If the child process has exited for some reason, this method returns `None`
     /// and you have to run `start()` again.
     pub async fn update_status(&self) -> Option<Info> {
-        let mut status = self.inner.status.lock().await;
+        let (new_status, info) = {
+            match &*self.inner.status.read().await {
+                ServerStatus::Running { process, info } => {
+                    let is_running = process.id();
 
-        match &*status {
-            ServerStatus::Running { process, info } => {
-                let is_running = process.id();
+                    if is_running.is_some() {
+                        (None, Some(info.clone()))
+                    } else {
+                        info!("Child process of the server has exited");
 
-                if is_running.is_some() {
-                    Some(info.clone())
-                } else {
-                    info!("Child process of the server has exited");
-                    *status = ServerStatus::Stopped;
+                        (Some(ServerStatus::Stopped), None)
+                    }
+                }
+                ServerStatus::Stopped => {
+                    info!("update_status: Server hasn't been started yet, do nothing.");
 
-                    None
+                    (None, None)
                 }
             }
-            ServerStatus::Stopped => {
-                info!("Server hasn't been started yet, do nothing.");
+        };
 
-                None
-            }
+        if let Some(new_status) = new_status {
+            *self.inner.status.write().await = new_status;
         }
+
+        info
     }
 
     /// Stops the server it's currently running ( [`ServerStatus::Running`] )
@@ -293,42 +293,7 @@ impl Server {
     /// `true` if there was a server PID that was stopped
     /// `false` if the process has already been killed before this call
     pub async fn stop(&self) -> anyhow::Result<bool> {
-        let mut status = self.inner.status.lock().await;
-
-        match &mut *status {
-            ServerStatus::Running { process, .. } => {
-                let id = process.id();
-                let kill_result = process
-                    .kill()
-                    .await
-                    .context("Failed to stop the server process.");
-
-                let pid_stopped = match id {
-                    // if the server process was just killed only then wait till it's fully stopped.
-                    Some(pid) => {
-                        info!("Server was shut down. (PID #{})", pid);
-                        // wait for the server to fully stop
-                        sleep(WAIT_FOR_FULL_STOP).await;
-                        info!(
-                            "Waited {} seconds for the server to fully stop",
-                            WAIT_FOR_FULL_STOP.as_secs()
-                        );
-
-                        true
-                    }
-                    None => {
-                        info!("Server is already shut down");
-                        false
-                    }
-                };
-
-                kill_result.map(|_| pid_stopped)
-            }
-            ServerStatus::Stopped => {
-                info!("Server hasn't been started yet, do nothing.");
-                Ok(false)
-            }
-        }
+        self.inner.stop().await
     }
 
     pub async fn restart(&self) -> anyhow::Result<Info> {
@@ -383,7 +348,56 @@ impl Server {
     }
 }
 
-impl Drop for Server {
+#[derive(Debug)]
+struct ServerInner {
+    pub config: Config,
+    pub status: RwLock<ServerStatus>,
+    server_url_sender: watch::Sender<Option<Url>>,
+    pub server_url_receiver: watch::Receiver<Option<Url>>,
+}
+
+impl ServerInner {
+    pub async fn stop(&self) -> anyhow::Result<bool> {
+        let mut status = self.status.write().await;
+
+        match &mut *status {
+            ServerStatus::Running { process, .. } => {
+                let id = process.id();
+                let kill_result = process
+                    .kill()
+                    .await
+                    .context("Failed to stop the server process.");
+
+                let pid_stopped = match id {
+                    // if the server process was just killed only then wait till it's fully stopped.
+                    Some(pid) => {
+                        info!("Server was shut down. (PID #{})", pid);
+                        // wait for the server to fully stop
+                        sleep(WAIT_FOR_FULL_STOP).await;
+                        info!(
+                            "Waited {} seconds for the server to fully stop",
+                            WAIT_FOR_FULL_STOP.as_secs()
+                        );
+
+                        true
+                    }
+                    None => {
+                        info!("Server is already shut down");
+                        false
+                    }
+                };
+
+                kill_result.map(|_| pid_stopped)
+            }
+            ServerStatus::Stopped => {
+                info!("stop: Server hasn't been started yet, do nothing.");
+                Ok(false)
+            }
+        }
+    }
+}
+
+impl Drop for ServerInner {
     fn drop(&mut self) {
         match block_on(self.stop()) {
             Ok(_) => {}

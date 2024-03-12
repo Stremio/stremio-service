@@ -6,6 +6,7 @@ use std::{
     fmt::{Debug, Display},
     path::PathBuf,
     str::FromStr,
+    sync::Arc,
     time::Duration,
 };
 
@@ -187,41 +188,33 @@ impl Application {
             return Ok(());
         }
 
-        // we manually start the server the first time, to make sure it starts with the app without any delay
-        // in child process start nor in updating the server status in the Tray menu
-        let server_info = self
-            .server
-            .start()
-            .await
-            .context("Failed to start Server")?;
-
-        info!("Server started successfully: {server_info:#?}");
-        // self.server.run_logger(server_url_sender);
-
+        let initial_server_tray_status = ServerTrayStatus::Stopped;
         let (action_sender, action_receiver) = tokio::sync::watch::channel(None);
         let (status_sender, status_receiver) =
-            tokio::sync::watch::channel(Some(ServerTrayStatus::Running {
-                info: server_info.clone(),
-            }));
-
-        tokio::spawn(Self::run_server_process_updater(
-            action_receiver,
-            status_sender,
-            self.server.clone(),
-        ));
-
+            tokio::sync::watch::channel(Some(initial_server_tray_status.clone()));
+        let status_sender = Arc::new(status_sender);
         let tray_status = TrayStatus {
-            server_js: Some(ServerTrayStatus::Running {
-                info: Info {
-                    config: server_info.config.clone(),
-                    version: server_info.version,
-                    base_url: server_info.base_url,
-                },
-            }),
+            server_js: Some(initial_server_tray_status),
         };
 
         let mut tray_menu = TrayMenu::new(&event_loop)?;
         tray_menu.set_status(tray_status);
+
+        // we manually start the server the first time, to make sure it starts with the app without any delay
+        // in child process start nor in updating the server status in the Tray menu
+        let start_server = self.server.clone();
+        let sender2 = status_sender.clone();
+        // Run the initial start-up of the server before running the tray status updater.
+        tokio::spawn(async move {
+            let server_info = start_server.start().await.expect("Failed to start Server");
+
+            sender2
+                .send(Some(ServerTrayStatus::Running {
+                    info: server_info.clone(),
+                }))
+                .expect("Failed to send server status over Watch channel");
+            info!("Server started successfully: {server_info:#?}");
+        });
 
         let stats_updater = Self::run_tray_status_updater(
             self.server.clone(),
@@ -229,6 +222,12 @@ impl Application {
             event_loop.create_proxy(),
         );
         tokio::spawn(stats_updater);
+
+        tokio::spawn(Self::run_server_process_updater(
+            action_receiver,
+            status_sender.clone(),
+            self.server.clone(),
+        ));
 
         let server_url_receiver = self.server.server_url_receiver();
         event_loop.run(move |event, _event_loop, control_flow| {
@@ -339,6 +338,10 @@ impl Application {
         event_loop_proxy: EventLoopProxy<MenuEvent>,
     ) {
         let mut interval = interval_at(Instant::now() + Self::update_every(), Self::update_every());
+        info!(
+            "Tray status updater has been started; Checking status every {} seconds",
+            Self::update_every().as_secs()
+        );
 
         loop {
             let status = select! {
@@ -352,13 +355,11 @@ impl Application {
                     // like Stopping the server, we can know if we are transitioning from states.
                     .or_else(|| status_receiver.borrow().clone());
 
-                    debug!("Server status is updated (every {}s)", Self::update_every().as_secs());
-
                     status
                 },
                 Ok(_) = status_receiver.changed() => {
                     let status = status_receiver.borrow().clone();
-                    debug!("Server status was updated by an action");
+                    debug!("Server status was updated by either user or program action.");
 
                     status
                 }
@@ -378,9 +379,10 @@ impl Application {
     /// when updating (like restarting, stopping and starting) the server process.
     async fn run_server_process_updater(
         mut receiver: watch::Receiver<Option<ServerAction>>,
-        status_sender: watch::Sender<Option<ServerTrayStatus>>,
+        status_sender: Arc<watch::Sender<Option<ServerTrayStatus>>>,
         server: Server,
     ) {
+        info!("Server process updater has been started.");
         // errors only when sender is dropped.
         while receiver.changed().await.is_ok() {
             let action = *receiver.borrow();
@@ -561,7 +563,7 @@ fn make_it_autostart(home_dir: impl AsRef<Path>) {
     #[cfg(target_os = "macos")]
     {
         use crate::{
-            config::{APP_IDENTIFIER, APP_NAME, LAUNCH_AGENTS_PATH},
+            constants::{APP_IDENTIFIER, APP_NAME, LAUNCH_AGENTS_PATH},
             util::create_dir_if_does_not_exists,
         };
 

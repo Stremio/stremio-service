@@ -45,7 +45,7 @@ impl Config {
             let ffmpeg = directory.join(Self::ffmpeg_bin()?);
             let ffprobe = directory.join(Self::ffprobe_bin()?);
 
-            let binaries_paths = vec![
+            let binaries_paths = [
                 server.clone(),
                 node.clone(),
                 ffmpeg.clone(),

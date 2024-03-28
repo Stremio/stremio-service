@@ -1,7 +1,7 @@
 # Copyright (C) 2017-2024 Smart Code OOD 203358507
 [package]
 name = "stremio-service"
-version = "0.1.12"
+version = "0.1.13"
 edition = "2021"
 authors = ["Stremio"]
 description = "Stremio service - Freedom to Stream"
@@ -13,7 +13,7 @@ readme = "README.md"
 default-run = "stremio-service"
 
 [package.metadata.server]
-version = "v4.20.3"
+version = "v4.20.8"
 
 [features]
 default = []

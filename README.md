@@ -5,7 +5,7 @@
 ## Features
 
 - `default` features - none
-- `bundled` - uses binaries location for an installed(and bundled) application.
+- `offline-build` - prevent the build script from downloading anything
 
 ## Download
 
@@ -74,10 +74,8 @@ cargo build --release
 
 #### Windows
 
-Build the binaries on Windows in release using the `bundled` feature.
-
 ```
-cargo build --release --features=bundled
+cargo build --release
 ```
 
 Run the Inno Setup compiler `ISCC` command inside `Command Prompt` or `PowerShell` against the `StremioService.iss` script. Depending on your installation the path to `IISC` may vary. Here is an example with the default installation path, presuming your current working directory is the project's root:
@@ -97,10 +95,10 @@ A new executable should be produced - `StremioServiceSetup.exe`
 rustup target add x86_64-pc-windows-gnu
 ```
 
-2. And build the binary using the `bundled` feature:
+2. And build the binary:
 
 ```
-cargo build --release --target x86_64-pc-windows-gnu --features=bundled
+cargo build --release --target x86_64-pc-windows-gnu
 ```
 
 **NOTE:** The Windows installed can **not** be built on other platforms, only **Windows**.
@@ -115,10 +113,10 @@ cargo deb
 
 `cargo-generate-rpm` does not not build the binary nor strips debugging symbols as of version `0.9.1`.
 
-This is why we need to first build the release (with the `bundled` feature):
+This is why we need to first build the release:
 
 ```
-cargo build --release --features=bundled
+cargo build --release
 ```
 
 Strip the debugging symbols:

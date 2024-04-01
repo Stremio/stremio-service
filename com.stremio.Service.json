@@ -26,7 +26,7 @@
         },
         "build-commands": [
             "cargo --offline fetch --manifest-path Cargo.toml --verbose",
-            "cargo --offline build --release --features=bundled,offline-build --verbose"
+            "cargo --offline build --release --features=offline-build --verbose"
         ],
         "post-install": [
             "install -Dm755 ./flatpak/stremio-service -t /app/bin/",

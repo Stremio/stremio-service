@@ -161,11 +161,11 @@ impl Application {
                         open_stremio_web(None);
                     }
                     if menu_id == quit_item_id {
-                        system_tray.take();
                         *control_flow = ControlFlow::Exit;
                     }
                 }
                 Event::LoopDestroyed => {
+                    system_tray.take();
                     if let Err(err) = server.stop() {
                         error!("{err}")
                     }

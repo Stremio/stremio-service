@@ -1,5 +1,5 @@
 #!/bin/sh
-python flatpak/flatpak-builder-tools/cargo/flatpak-cargo-generator.py Cargo.lock -o flatpak/cargo-sources.json
+python3 flatpak/flatpak-builder-tools/cargo/flatpak-cargo-generator.py Cargo.lock -o flatpak/cargo-sources.json
 
 server_version=$(sed -n '/package.metadata.server/,$p' Cargo.toml | grep -m 1 'version =' | awk -F'"' '{print $2}')
 server_file_url=https://dl.strem.io/server/$server_version/desktop/server.js

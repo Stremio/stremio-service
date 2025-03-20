@@ -1,8 +1,8 @@
 {
     "app-id": "com.stremio.Service",
-    "runtime": "org.gnome.Platform",
-    "runtime-version": "44",
-    "sdk": "org.gnome.Sdk",
+    "runtime": "org.freedesktop.Platform",
+    "runtime-version": "24.08",
+    "sdk": "org.freedesktop.Sdk",
     "sdk-extensions": ["org.freedesktop.Sdk.Extension.rust-stable"],
     "command": "stremio-service",
     "finish-args": [

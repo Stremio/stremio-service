@@ -38,7 +38,7 @@ jobs:
             target/debian/*.deb
       # Builds the rpm linux package
       - name: Build release
-        run: cargo build --release --features=bundled
+        run: cargo build --release
       - name: Strip debug symbols
         run: strip -s target/release/stremio-service
       - name: Build rpm package

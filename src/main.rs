@@ -1,7 +1,7 @@
 // Copyright (C) 2017-2025 Smart Code OOD 203358507
 
 #![cfg_attr(
-    all(target_os = "windows", feature = "bundled"),
+    all(target_os = "windows", not(debug_assertions)),
     windows_subsystem = "windows"
 )]
 use std::error::Error;
@@ -28,11 +28,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let home_dir = dirs::home_dir().context("Failed to get home dir")?;
     let cache_dir = dirs::cache_dir().context("Failed to get cache dir")?;
 
-    #[cfg(feature = "bundled")]
-    // use the installed dir if we've built the app with `bundled` feature.
+    // use current exe directory
+    #[cfg(not(debug_assertions))]
     let service_bins_dir = stremio_service::util::get_current_exe_dir();
-    #[cfg(not(feature = "bundled"))]
+
     // use the `resources/bin/{linux|windows|macos}` directory
+    #[cfg(debug_assertions)]
     let service_bins_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("resources")
         .join("bin")

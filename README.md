@@ -21,7 +21,7 @@ _For `dl.strem.io` urls replace `{VERSION}` with the latest release version of S
 
 ## Development
 
-```
+```sh
 git clone --recurse-submodules https://github.com/Stremio/stremio-service
 ```
 
@@ -34,25 +34,21 @@ Download & Install [Inno Setup](https://jrsoftware.org/isdl.php).
 
 #### Ubuntu
 
-```
+```sh
 apt install build-essential libgtk-3-dev pkg-config libssl-dev libayatana-appindicator3-dev
-```
-
-```
 cargo install cargo-deb
 ```
 
 #### Fedora
-```
+
+```sh
 dnf install gtk3-devel
-```
-```
 cargo install cargo-generate-rpm
 ```
 
 #### MacOS
 
-```
+```sh
 npm install -g create-dmg && brew install graphicsmagick imagemagick
 ```
 
@@ -60,13 +56,13 @@ npm install -g create-dmg && brew install graphicsmagick imagemagick
 
 By default the `stremio-service` binary is ran with `info` log level:
 
-```
+```sh
 RUST_LOG=info cargo run
 ```
 
 ### Build
 
-```
+```sh
 cargo build --release
 ```
 
@@ -76,13 +72,13 @@ cargo build --release
 
 Build the binaries on Windows in release using the `bundled` feature.
 
-```
+```sh
 cargo build --release --features=bundled
 ```
 
 Run the Inno Setup compiler `ISCC` command inside `Command Prompt` or `PowerShell` against the `StremioService.iss` script. Depending on your installation the path to `IISC` may vary. Here is an example with the default installation path, presuming your current working directory is the project's root:
 
-```
+```pwsh
 "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "setup\StremioService.iss"
 ```
 If you use `PowerShell` you need to prepend `&` in the beginning of the line.
@@ -93,13 +89,13 @@ A new executable should be produced - `StremioServiceSetup.exe`
 
 1. For cross-compiling on Linux, you need to add the `x86_64-pc-windows-gnu` target:
 
-```
+```sh
 rustup target add x86_64-pc-windows-gnu
 ```
 
 2. And build the binary using the `bundled` feature:
 
-```
+```sh
 cargo build --release --target x86_64-pc-windows-gnu --features=bundled
 ```
 
@@ -107,29 +103,15 @@ cargo build --release --target x86_64-pc-windows-gnu --features=bundled
 
 #### Ubuntu
 
-```
+```sh
 cargo deb
 ```
 
 #### Fedora
 
-`cargo-generate-rpm` does not not build the binary nor strips debugging symbols as of version `0.9.1`.
-
-This is why we need to first build the release (with the `bundled` feature):
-
-```
+```sh
 cargo build --release --features=bundled
-```
-
-Strip the debugging symbols:
-
-```
 strip -s target/release/stremio-service
-```
-
-And finally run the `generate-rpm` cargo subcommand:
-
-```
 cargo generate-rpm
 ```
 
@@ -137,13 +119,15 @@ cargo generate-rpm
 
 The Manifest is located [com.stremio.Service.json](./com.stremio.Service.json) and you can bundle the application using the script:
 
-`./build-flatpak.sh`
+```sh
+./build-flatpak.sh
+```
 
 #### MacOS
 
 Use either `cargo run --bin bundle-macos` or its alias `cargo macos` to build the MacOS `.app` and then build the `dmg` package:
 
-```
+```sh
 cargo macos && create-dmg --overwrite target/macos/*.app target/macos
 ```
 
@@ -174,7 +158,7 @@ The `generate_descriptor.js` script is used to generate new version descriptor a
 
 Assuming the release actions finished successfully there will be already a release candidate descriptor. It can be tested by running the service with the `--release-candidate` argument and it should update. If so invoking the `generate_descriptor.js` script with `--release` flag will publish the descriptor to the release channel:
 
-```
+```pwsh
 C:\stremio-service> node .\generate_descriptor.js --tag=v0.1.0 --release
 Descriptor for tag v0.1.0 already exists in the RC folder. Moving it to the releases folder
 Done
@@ -193,7 +177,7 @@ By default the script generates a descriptor as long as at least one file is bui
 
 For testing purposes there is also a `--dry-run` flag. If you use it the descriptor will be generated and printed to the terminal. This flag should work even with read only AWS credentials. Here is an example of the `-dry-run` flag:
 
-```
+```pwsh
 C:\stremio-service> node .\generate_descriptor.js --tag=v0.1.0 --dry-run
 RC Descriptor for tag v0.1.0 already exists
 C:\stremio-service> node .\generate_descriptor.js --tag=v0.1.0 --dry-run --force

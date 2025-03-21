@@ -47,7 +47,7 @@ cargo install cargo-deb
 dnf install gtk3-devel
 ```
 ```
-cargo install generate-rpm
+cargo install cargo-generate-rpm
 ```
 
 #### MacOS

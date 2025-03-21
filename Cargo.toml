@@ -71,7 +71,7 @@ url = { version = "2.3", features = ["serde"] }
 urlencoding = "2.1"
 zip-extract = "0.1"
 tao = "0.32.8"
-tray-icon = "0.20.0"
+tray-icon = { version = "0.20.0", default-features = false }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 ashpd = "0.11"

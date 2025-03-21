@@ -35,14 +35,14 @@ Download & Install [Inno Setup](https://jrsoftware.org/isdl.php).
 #### Ubuntu
 
 ```sh
-apt install build-essential pkg-config libgtk-3-dev libxdo-dev libssl-dev libayatana-appindicator3-dev
+apt install build-essential pkg-config libgtk-3-dev libssl-dev libayatana-appindicator3-dev
 cargo install cargo-deb
 ```
 
 #### Fedora
 
 ```sh
-dnf install gtk3-devel libxdo-devel
+dnf install gtk3-devel
 cargo install cargo-generate-rpm
 ```
 

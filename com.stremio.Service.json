@@ -19,29 +19,6 @@
     "modules": [
         "flatpak/shared-modules/libappindicator/libappindicator-gtk3-12.10.json",
         {
-            "name": "libxdo",
-            "buildsystem": "autotools",
-            "no-autogen": true,
-            "make-args": [
-                "WITHOUT_RPATH_FIX=1"
-            ],
-            "make-install-args": [
-                "PREFIX=/app"
-            ],
-            "cleanup": [
-                "/bin",
-                "/include",
-                "/man"
-            ],
-            "sources": [
-                {
-                    "type": "archive",
-                    "url": "https://github.com/jordansissel/xdotool/archive/v3.20211022.1/xdotool-3.20211022.1.tar.gz",
-                    "sha256": "82b15a944a5e82fee15e0f6116bd9f642bc3d0bb6989fc0ca5ad9dfe35de0847"
-                }
-            ]
-        },
-        {
             "name": "service",
             "buildsystem": "simple",
             "build-options": {

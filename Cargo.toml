@@ -13,7 +13,7 @@ readme = "README.md"
 default-run = "stremio-service"
 
 [package.metadata.server]
-version = "v4.20.8"
+version = "v4.20.11"
 
 [features]
 default = []

@@ -74,6 +74,9 @@ url = { version = "2.3", features = ["serde"] }
 urlencoding = "2.1"
 zip-extract = "0.1"
 
+[target.'cfg(target_os = "linux")'.dependencies]
+ashpd = "0.11"
+
 [target.'cfg(target_os = "macos")'.dependencies]
 # MacOS Apple Events handling
 fruitbasket = "0.10"

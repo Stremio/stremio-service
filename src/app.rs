@@ -124,7 +124,7 @@ impl Application {
         }
 
         #[cfg(all(feature = "bundled", any(target_os = "linux", target_os = "macos")))]
-        make_it_autostart(self.config.home_dir.clone());
+        make_it_autostart(self.config.home_dir.clone()).await;
 
         // NOTE: we do not need to run the Fruitbasket event loop but we do need to keep `app` in-scope for the full lifecycle of the app
         #[cfg(target_os = "macos")]
@@ -222,25 +222,34 @@ fn open_stremio_web(addon_manifest_url: Option<String>) {
 
 /// Only for Linux and MacOS
 #[cfg(all(feature = "bundled", any(target_os = "linux", target_os = "macos")))]
-fn make_it_autostart(home_dir: impl AsRef<Path>) {
+async fn make_it_autostart(home_dir: impl AsRef<Path>) {
     #[cfg(target_os = "linux")]
     {
         use crate::{
             constants::{AUTOSTART_CONFIG_PATH, DESKTOP_FILE_NAME, DESKTOP_FILE_PATH},
             util::create_dir_if_does_not_exists,
         };
+        use ashpd::desktop::background::Background;
 
-        create_dir_if_does_not_exists(&home_dir.as_ref().join(AUTOSTART_CONFIG_PATH));
+        if Path::new("/.flatpak-info").exists() {
+            let request = Background::request().auto_start(true);
 
-        let from = PathBuf::from(DESKTOP_FILE_PATH).join(DESKTOP_FILE_NAME);
-        let to = home_dir
-            .as_ref()
-            .join(AUTOSTART_CONFIG_PATH)
-            .join(DESKTOP_FILE_NAME);
+            if let Err(e) = request.send().await.and_then(|r| r.response()) {
+                error!("Failed to request autostart: {}", e);
+            }
+        } else {
+            create_dir_if_does_not_exists(&home_dir.as_ref().join(AUTOSTART_CONFIG_PATH));
 
-        if !to.exists() {
-            if let Err(e) = std::fs::copy(from, to) {
-                error!("Failed to copy desktop file to autostart location: {}", e);
+            let from = PathBuf::from(DESKTOP_FILE_PATH).join(DESKTOP_FILE_NAME);
+            let to = home_dir
+                .as_ref()
+                .join(AUTOSTART_CONFIG_PATH)
+                .join(DESKTOP_FILE_NAME);
+
+            if !to.exists() {
+                if let Err(e) = std::fs::copy(from, to) {
+                    error!("Failed to copy desktop file to autostart location: {}", e);
+                }
             }
         }
     }

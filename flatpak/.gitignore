@@ -3,3 +3,4 @@ repo
 cargo-sources.json
 server-source.json
 com.stremio.Service.flatpak
+com.stremio.Service.desktop

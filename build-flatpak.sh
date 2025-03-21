@@ -11,6 +11,8 @@ server_source_template='{
 }'
 echo "$server_source_template" | sed "s|{server_file_url}|$server_file_url|" | sed "s|{sha256_checksum}|$sha256_checksum|" > flatpak/server-source.json
 
+sed -e 's/usr/app/g' -e 's/com.stremio.service/com.stremio.Service/g' resources/com.stremio.service.desktop > flatpak/com.stremio.Service.desktop
+
 flatpak-builder --force-clean flatpak/build com.stremio.Service.json
 flatpak build-export flatpak/repo flatpak/build
 flatpak build-bundle flatpak/repo flatpak/com.stremio.Service.flatpak com.stremio.Service

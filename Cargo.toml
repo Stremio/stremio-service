@@ -43,9 +43,6 @@ tokio = { version = "1.27", features = ["fs", "macros", "rt-multi-thread"] }
 env_logger = "0.10"
 log = "0.4"
 
-# Application window manager
-tao = { version = "0.19", features = ["tray"] }
-
 # Home dir
 dirs = "5.0"
 
@@ -73,6 +70,8 @@ url = { version = "2.3", features = ["serde"] }
 
 urlencoding = "2.1"
 zip-extract = "0.1"
+tao = "0.32.8"
+tray-icon = "0.20.0"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 ashpd = "0.11"

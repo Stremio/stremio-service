@@ -5,9 +5,9 @@ use std::{
     env,
     path::{Path, PathBuf},
 };
-use tao::system_tray;
+use tray_icon::Icon;
 
-pub fn load_icon(buffer: &[u8]) -> system_tray::Icon {
+pub fn load_icon(buffer: &[u8]) -> Icon {
     let (icon_rgba, icon_width, icon_height) = {
         let image = image::load_from_memory(buffer)
             .expect("Failed to open icon path")
@@ -17,7 +17,8 @@ pub fn load_icon(buffer: &[u8]) -> system_tray::Icon {
 
         (rgba, width, height)
     };
-    system_tray::Icon::from_rgba(icon_rgba, icon_width, icon_height).expect("Failed to open icon")
+
+    Icon::from_rgba(icon_rgba, icon_width, icon_height).expect("Failed to open icon")
 }
 
 pub fn get_current_exe_dir() -> PathBuf {

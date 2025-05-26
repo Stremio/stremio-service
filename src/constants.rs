@@ -3,6 +3,7 @@
 pub const STREMIO_URL: &str = "https://web.stremio.com";
 pub const APP_IDENTIFIER: &str = "com.stremio.service";
 pub const APP_NAME: &str = "StremioService";
+pub const APP_ICON: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/icons/icon.png"));
 
 pub const DESKTOP_FILE_PATH: &str = "/usr/share/applications";
 pub const DESKTOP_FILE_NAME: &str = "com.stremio.service.desktop";

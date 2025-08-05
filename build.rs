@@ -32,10 +32,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("cargo:rerun-if-changed=src/");
 
     if !SUPPORTED_OS.contains(&OS) {
-        panic!(
-            "OS {} not supported, supported OSes are: {:?}",
-            OS, SUPPORTED_OS
-        )
+        panic!("OS {OS} not supported, supported OSes are: {SUPPORTED_OS:?}",)
     }
 
     let current_dir = std::env::current_dir()?;

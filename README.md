@@ -35,7 +35,7 @@ Download & Install [Inno Setup](https://jrsoftware.org/isdl.php).
 #### Ubuntu
 
 ```sh
-apt install build-essential libgtk-3-dev pkg-config libssl-dev libayatana-appindicator3-dev
+apt install build-essential pkg-config libgtk-3-dev libssl-dev libayatana-appindicator3-dev
 cargo install cargo-deb
 ```
 

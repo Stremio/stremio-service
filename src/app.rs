@@ -9,10 +9,11 @@ use std::path::Path;
 use std::path::PathBuf;
 use tao::{
     event::Event,
-    event_loop::{ControlFlow, EventLoop},
-    menu::{ContextMenu, MenuId, MenuItemAttributes},
-    system_tray::{SystemTray, SystemTrayBuilder},
-    TrayId,
+    event_loop::{ControlFlow, EventLoop, EventLoopBuilder},
+};
+use tray_icon::{
+    menu::{Menu, MenuEvent, MenuId, MenuItem},
+    TrayIcon, TrayIconBuilder,
 };
 use url::Url;
 
@@ -33,6 +34,10 @@ pub static IS_UPDATER_SUPPORTED: bool = true;
 /// Updater is supported only for non-linux operating systems.
 #[cfg(target_os = "linux")]
 pub static IS_UPDATER_SUPPORTED: bool = false;
+
+enum UserEvent {
+    MenuEvent(MenuId),
+}
 
 pub struct Application {
     /// The video server process
@@ -126,7 +131,7 @@ impl Application {
         let _fruit_app = register_apple_event_callbacks();
 
         // Showing the system tray icon as soon as possible to give the user a feedback
-        let event_loop = EventLoop::new();
+        let event_loop = EventLoopBuilder::<UserEvent>::with_user_event().build();
         let (mut system_tray, open_item_id, quit_item_id) = create_system_tray(&event_loop)?;
 
         let current_version = env!("CARGO_PKG_VERSION")
@@ -151,16 +156,19 @@ impl Application {
             *control_flow = ControlFlow::Wait;
 
             match event {
-                Event::MenuEvent { menu_id, .. } => {
-                    if menu_id == open_item_id {
-                        open_stremio_web(None);
+                Event::UserEvent(event) => match event {
+                    UserEvent::MenuEvent(menu_id) => {
+                        if menu_id == open_item_id {
+                            open_stremio_web(None);
+                        }
+                        if menu_id == quit_item_id {
+                            *control_flow = ControlFlow::Exit;
+                        }
                     }
-                    if menu_id == quit_item_id {
-                        *control_flow = ControlFlow::Exit;
-                    }
-                }
+                },
                 Event::LoopDestroyed => {
                     system_tray.take();
+
                     if let Err(err) = server.stop() {
                         error!("{err}")
                     }
@@ -172,23 +180,36 @@ impl Application {
 }
 
 fn create_system_tray(
-    event_loop: &EventLoop<()>,
-) -> Result<(Option<SystemTray>, MenuId, MenuId), anyhow::Error> {
-    let mut tray_menu = ContextMenu::new();
-    let open_item = tray_menu.add_item(MenuItemAttributes::new("Open Stremio Web"));
-    let quit_item = tray_menu.add_item(MenuItemAttributes::new("Quit"));
+    event_loop: &EventLoop<UserEvent>,
+) -> Result<(Option<TrayIcon>, MenuId, MenuId), anyhow::Error> {
+    let open_item = MenuItem::new("Open Stremio Web", true, None);
+    let quit_item = MenuItem::new("Quit", true, None);
 
-    let version_item_label = format!("v{}", env!("CARGO_PKG_VERSION"));
-    let version_item = MenuItemAttributes::new(version_item_label.as_str()).with_enabled(false);
-    tray_menu.add_item(version_item);
+    let version_label = format!("v{}", env!("CARGO_PKG_VERSION"));
+    let version_item = MenuItem::new(version_label.as_str(), false, None);
+
+    let menu = Menu::new();
+    menu.append_items(&[&open_item, &quit_item, &version_item])
+        .context("Failed to append menu items")?;
 
     let icon = load_icon(APP_ICON);
-    let system_tray = SystemTrayBuilder::new(icon, Some(tray_menu))
-        .with_id(TrayId::new("main"))
-        .build(event_loop)
-        .context("Failed to build the application system tray")?;
 
-    Ok((Some(system_tray), open_item.id(), quit_item.id()))
+    let tray_icon = TrayIconBuilder::new()
+        .with_menu(Box::new(menu))
+        .with_icon(icon)
+        .build()
+        .context("Failed to build tray icon")?;
+
+    let proxy = event_loop.create_proxy();
+    tray_icon::menu::MenuEvent::set_event_handler(Some(move |event: MenuEvent| {
+        proxy.send_event(UserEvent::MenuEvent(event.id)).ok();
+    }));
+
+    Ok((
+        Some(tray_icon),
+        open_item.id().to_owned(),
+        quit_item.id().to_owned(),
+    ))
 }
 
 /// Handles `stremio://` urls by replacing the custom scheme with `https://`

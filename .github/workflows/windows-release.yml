@@ -39,7 +39,7 @@ jobs:
       - name: Get current date
         id: date
         run: echo "TODAY_DATE=$(date +'%d %b %Y')" >> $GITHUB_OUTPUT
-      - name: Upload dmg and zip file to release
+      - name: Upload zip file to release
         uses: softprops/action-gh-release@v1
         with:
           # Use the same name as all releases!
@@ -49,4 +49,3 @@ jobs:
           fail_on_unmatched_files: true
           files: |
             stremio-service-windows.zip
-            StremioServiceSetup.exe

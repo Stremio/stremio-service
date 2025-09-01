@@ -17,7 +17,7 @@
         "append-path": "/usr/lib/sdk/rust-stable/bin"
     },
     "modules": [
-        "flatpak/shared-modules/libappindicator/libappindicator-gtk3-12.10.json",
+        "shared-modules/libappindicator/libappindicator-gtk3-12.10.json",
         {
             "name": "service",
             "buildsystem": "simple",
@@ -46,10 +46,10 @@
             "sources": [
                 {
                     "type": "dir",
-                    "path": "."
+                    "path": "../"
                 },
-                "flatpak/cargo-sources.json",
-                "flatpak/server-source.json"
+                "cargo-sources.json",
+                "server-source.json"
             ]
         }
     ]

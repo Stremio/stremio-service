@@ -35,7 +35,7 @@ jobs:
       - name: Install python modules
         run: python -m pip install toml aiohttp
       - name: Build
-        run: sh ./build-flatpak.sh
+        run: sh ./flatpak/build.sh
       - name: Get current date
         id: date
         run: echo "TODAY_DATE=$(date +'%d %b %Y')" >> $GITHUB_OUTPUT

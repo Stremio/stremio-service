@@ -1,10 +1,9 @@
 // Copyright (C) 2017-2025 Smart Code OOD 203358507
 
-use anyhow::{anyhow, Context, Error};
+use anyhow::{Context, Error};
 use fslock::LockFile;
 use log::{error, info};
 use rand::Rng;
-use rust_embed::RustEmbed;
 #[cfg(all(feature = "bundled", any(target_os = "linux", target_os = "macos")))]
 use std::path::Path;
 use std::path::PathBuf;
@@ -20,7 +19,7 @@ use url::Url;
 
 use crate::{
     args::Args,
-    constants::{STREMIO_URL, UPDATE_ENDPOINT},
+    constants::{APP_ICON, STREMIO_URL, UPDATE_ENDPOINT},
     server::Server,
     updater::Updater,
     util::load_icon,
@@ -35,10 +34,6 @@ pub static IS_UPDATER_SUPPORTED: bool = true;
 /// Updater is supported only for non-linux operating systems.
 #[cfg(target_os = "linux")]
 pub static IS_UPDATER_SUPPORTED: bool = false;
-
-#[derive(RustEmbed)]
-#[folder = "icons"]
-struct Icons;
 
 enum UserEvent {
     MenuEvent(MenuId),
@@ -197,8 +192,7 @@ fn create_system_tray(
     menu.append_items(&[&open_item, &quit_item, &version_item])
         .context("Failed to append menu items")?;
 
-    let icon_file = Icons::get("icon.png").ok_or_else(|| anyhow!("Failed to get icon file"))?;
-    let icon = load_icon(icon_file.data.as_ref());
+    let icon = load_icon(APP_ICON);
 
     let tray_icon = TrayIconBuilder::new()
         .with_menu(Box::new(menu))

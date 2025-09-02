@@ -1,3 +1,5 @@
+// Copyright (C) 2017-2025 Smart Code OOD 203358507
+
 use std::path::PathBuf;
 
 use anyhow::{Context, Error};

@@ -4,9 +4,9 @@ use anyhow::{Context, Error};
 use rand::Rng as _;
 use url::Url;
 
-use crate::{args::Args, constants::UPDATE_ENDPOINT, server};
 #[cfg(feature = "bundled")]
 use crate::util;
+use crate::{args::Args, constants::UPDATE_ENDPOINT, server};
 
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -14,6 +14,8 @@ pub struct Config {
     /// used to make the application an autostart one (on `*nix` systems)
     #[cfg_attr(any(not(feature = "bundled"), target_os = "windows"), allow(dead_code))]
     pub home_dir: PathBuf,
+
+    pub tray_icon: PathBuf,
 
     /// The lockfile that guards against running multiple instances of the service.
     pub lockfile: PathBuf,
@@ -35,6 +37,9 @@ impl Config {
     pub fn new(args: Args) -> Result<Self, Error> {
         let home_dir = dirs::home_dir().context("Failed to get home dir")?;
         let cache_dir = dirs::cache_dir().context("Failed to get cache dir")?;
+        let runtime_dir = dirs::runtime_dir().context("Failed to get runtime dir")?;
+
+        let tray_icon = runtime_dir.join("stremio-service");
 
         let lockfile = cache_dir.join("lock");
 
@@ -63,6 +68,7 @@ impl Config {
 
         Ok(Self {
             home_dir,
+            tray_icon,
             lockfile,
             server,
             updater_endpoint,

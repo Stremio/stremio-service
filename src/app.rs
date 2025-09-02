@@ -5,6 +5,7 @@ use fslock::LockFile;
 use log::{error, info};
 #[cfg(all(feature = "bundled", any(target_os = "linux", target_os = "macos")))]
 use std::path::Path;
+use std::path::PathBuf;
 use tao::{
     event::Event,
     event_loop::{ControlFlow, EventLoop, EventLoopBuilder},
@@ -66,7 +67,8 @@ impl Application {
 
         // Showing the system tray icon as soon as possible to give the user a feedback
         let event_loop = EventLoopBuilder::<UserEvent>::with_user_event().build();
-        let (mut system_tray, open_item_id, quit_item_id) = create_system_tray(&event_loop)?;
+        let (mut system_tray, open_item_id, quit_item_id) =
+            create_system_tray(&event_loop, &self.config.tray_icon)?;
 
         let current_version = env!("CARGO_PKG_VERSION")
             .parse()
@@ -115,6 +117,7 @@ impl Application {
 
 fn create_system_tray(
     event_loop: &EventLoop<UserEvent>,
+    icon_dir: &PathBuf,
 ) -> Result<(Option<TrayIcon>, MenuId, MenuId), anyhow::Error> {
     let open_item = MenuItem::new("Open Stremio Web", true, None);
     let quit_item = MenuItem::new("Quit", true, None);
@@ -131,6 +134,7 @@ fn create_system_tray(
     let tray_icon = TrayIconBuilder::new()
         .with_menu(Box::new(menu))
         .with_icon(icon)
+        .with_temp_dir_path(icon_dir)
         .build()
         .context("Failed to build tray icon")?;
 

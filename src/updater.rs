@@ -10,7 +10,7 @@ use sha2::{Digest, Sha256};
 use tokio::io::AsyncWriteExt;
 use url::Url;
 
-use crate::app::Config;
+use crate::config::Config;
 
 pub struct Update {
     /// The new version that we update to

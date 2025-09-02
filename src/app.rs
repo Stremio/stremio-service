@@ -1,12 +1,10 @@
 // Copyright (C) 2017-2025 Smart Code OOD 203358507
 
-use anyhow::{Context, Error};
+use anyhow::Context;
 use fslock::LockFile;
 use log::{error, info};
-use rand::Rng;
 #[cfg(all(feature = "bundled", any(target_os = "linux", target_os = "macos")))]
 use std::path::Path;
-use std::path::PathBuf;
 use tao::{
     event::Event,
     event_loop::{ControlFlow, EventLoop, EventLoopBuilder},
@@ -15,18 +13,15 @@ use tray_icon::{
     menu::{Menu, MenuEvent, MenuId, MenuItem},
     TrayIcon, TrayIconBuilder,
 };
-use url::Url;
 
 use crate::{
-    args::Args,
-    constants::{APP_ICON, STREMIO_URL, UPDATE_ENDPOINT},
+    config::Config,
+    constants::{APP_ICON, STREMIO_URL},
     server::Server,
     updater::Updater,
     util::load_icon,
 };
 use urlencoding::encode;
-
-use crate::server;
 
 /// Updater is supported only for non-linux operating systems.
 #[cfg(not(target_os = "linux"))]
@@ -43,67 +38,6 @@ pub struct Application {
     /// The video server process
     server: Server,
     config: Config,
-}
-
-#[derive(Debug, Clone)]
-pub struct Config {
-    /// The Home directory of the user running the service
-    /// used to make the application an autostart one (on `*nix` systems)
-    #[cfg_attr(any(not(feature = "bundled"), target_os = "windows"), allow(dead_code))]
-    home_dir: PathBuf,
-
-    /// The lockfile that guards against running multiple instances of the service.
-    lockfile: PathBuf,
-
-    /// The server configuration
-    server: server::Config,
-    pub updater_endpoint: Url,
-    pub skip_update: bool,
-    pub force_update: bool,
-}
-
-impl Config {
-    /// Try to create by validating the application configuration.
-    ///
-    /// It will initialize the server [`server::Config`] and if it fails it will return an error.
-    ///
-    /// If `self_update` is `true` and it is a supported platform for the updater (see [`IS_UPDATER_SUPPORTED`])
-    /// it will check for the existence of the `updater` binary at the given location.
-    pub fn new(
-        args: Args,
-        home_dir: PathBuf,
-        cache_dir: PathBuf,
-        service_bins_dir: PathBuf,
-    ) -> Result<Self, Error> {
-        let server =
-            server::Config::new(service_bins_dir).context("Server configuration failed")?;
-
-        let lockfile = cache_dir.join("lock");
-
-        let updater_endpoint = if let Some(endpoint) = args.updater_endpoint {
-            endpoint
-        } else {
-            let mut url = Url::parse(Self::get_random_updater_endpoint().as_str())?;
-            if args.release_candidate {
-                url.query_pairs_mut().append_pair("rc", "true");
-            }
-            url
-        };
-
-        Ok(Self {
-            updater_endpoint,
-            home_dir,
-            lockfile,
-            server,
-            skip_update: args.skip_updater,
-            force_update: args.force_update,
-        })
-    }
-    fn get_random_updater_endpoint() -> String {
-        let mut rng = rand::thread_rng();
-        let index = rng.gen_range(0..UPDATE_ENDPOINT.len());
-        UPDATE_ENDPOINT[index].to_string()
-    }
 }
 
 impl Application {

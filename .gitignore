@@ -1,3 +1,4 @@
 /target
 .flatpak-builder
 StremioServiceSetup.exe
+stremio-service-windows*

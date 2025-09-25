@@ -4,7 +4,7 @@
 #define MyAppShortName "StremioService"
 #define MyAppExeName "stremio-service.exe"
 #define MyAppRoot SourcePath + "..\"
-#define MyAppBinLocation SourcePath + "..\target\release\"
+#define MyAppBinLocation SourcePath + "..\stremio-service-windows\"
 #define MyAppResBinLocation SourcePath + "..\resources\bin\windows\"
 #define MyAppExeLocation MyAppBinLocation + MyAppExeName
 #define MyAppVersion() GetVersionComponents(MyAppExeLocation, Local[0], Local[1], Local[2], Local[3]), \
@@ -148,20 +148,20 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"
 
 [Files]
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
-Source: "{#MyAppExeLocation}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#MyAppExeLocation}"; DestDir: "{app}"; Flags: ignoreversion signonce
 Source: "{#MyAppRoot}LICENSE.md"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#MyAppResBinLocation}ffmpeg.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#MyAppResBinLocation}ffprobe.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#MyAppResBinLocation}stremio-runtime.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#MyAppResBinLocation}ffmpeg.exe"; DestDir: "{app}"; Flags: ignoreversion signonce
+Source: "{#MyAppResBinLocation}ffprobe.exe"; DestDir: "{app}"; Flags: ignoreversion signonce
+Source: "{#MyAppResBinLocation}stremio-runtime.exe"; DestDir: "{app}"; Flags: ignoreversion signonce
 Source: "{#MyAppResBinLocation}server.js"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#MyAppResBinLocation}avcodec-58.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#MyAppResBinLocation}avdevice-58.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#MyAppResBinLocation}avfilter-7.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#MyAppResBinLocation}avformat-58.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#MyAppResBinLocation}avutil-56.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#MyAppResBinLocation}postproc-55.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#MyAppResBinLocation}swresample-3.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#MyAppResBinLocation}swscale-5.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#MyAppResBinLocation}avcodec-58.dll"; DestDir: "{app}"; Flags: ignoreversion signonce
+Source: "{#MyAppResBinLocation}avdevice-58.dll"; DestDir: "{app}"; Flags: ignoreversion signonce
+Source: "{#MyAppResBinLocation}avfilter-7.dll"; DestDir: "{app}"; Flags: ignoreversion signonce
+Source: "{#MyAppResBinLocation}avformat-58.dll"; DestDir: "{app}"; Flags: ignoreversion signonce
+Source: "{#MyAppResBinLocation}avutil-56.dll"; DestDir: "{app}"; Flags: ignoreversion signonce
+Source: "{#MyAppResBinLocation}postproc-55.dll"; DestDir: "{app}"; Flags: ignoreversion signonce
+Source: "{#MyAppResBinLocation}swresample-3.dll"; DestDir: "{app}"; Flags: ignoreversion signonce
+Source: "{#MyAppResBinLocation}swscale-5.dll"; DestDir: "{app}"; Flags: ignoreversion signonce
 
 [Registry]
 

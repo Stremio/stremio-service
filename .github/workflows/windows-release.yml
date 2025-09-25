@@ -16,20 +16,11 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
       - name: Build
         run: cargo build --release --features=bundled
-      - name: Sign executables
-        run: |
-          & 'C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x86\signtool.exe' sign /f "resources\certificates\smartcode-20211118-20241118.pfx" /p ${{ secrets.WIN_CERT_PASSWORD }} /v ".\target\release\stremio-service.exe"
-          & 'C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x86\signtool.exe' sign /f "resources\certificates\smartcode-20211118-20241118.pfx" /p ${{ secrets.WIN_CERT_PASSWORD }} /v ".\resources\bin\windows\node.exe"
-          & 'C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x86\signtool.exe' sign /f "resources\certificates\smartcode-20211118-20241118.pfx" /p ${{ secrets.WIN_CERT_PASSWORD }} /v ".\resources\bin\windows\ffmpeg.exe"
-          & 'C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x86\signtool.exe' sign /f "resources\certificates\smartcode-20211118-20241118.pfx" /p ${{ secrets.WIN_CERT_PASSWORD }} /v ".\resources\bin\windows\ffprobe.exe"
       - name: Zip release for windows
         uses: vimtor/action-zip@v1.1
         with:
           files: resources/bin/windows/ffmpeg.exe resources/bin/windows/ffprobe.exe resources/bin/windows/stremio-runtime.exe target/release/stremio-service.exe resources/bin/windows/server.js LICENSE.md
           dest: stremio-service-windows.zip
-      - name: Installer
-        run: |
-          & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' '/Sstremiosign=$qC:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x86\signtool.exe$q sign /f $q${{ github.workspace }}\resources\certificates\smartcode-20211118-20241118.pfx$q /p ${{ secrets.WIN_CERT_PASSWORD }} /v $f' 'setup\StremioService.iss'
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -40,15 +31,12 @@ jobs:
 
       - name: Upload to Amazon S3
         run: |
-          aws s3 cp --acl public-read StremioServiceSetup.exe s3://stremio-artifacts/stremio-service/${{ github.ref_name }}/
+          aws s3 cp --acl public-read stremio-service-windows.zip s3://stremio-artifacts/stremio-service-unsigned/${{ github.ref_name }}/
 
-      - name: Generate RC descriptor
-        run: |
-          node ./generate_descriptor.js --wait-all --tag=${{ github.ref_name }}
       - name: Get current date
         id: date
         run: echo "TODAY_DATE=$(date +'%d %b %Y')" >> $GITHUB_OUTPUT
-      - name: Upload dmg and zip file to release
+      - name: Upload zip file to release
         uses: softprops/action-gh-release@v1
         with:
           # Use the same name as all releases!
@@ -58,4 +46,3 @@ jobs:
           fail_on_unmatched_files: true
           files: |
             stremio-service-windows.zip
-            StremioServiceSetup.exe

@@ -40,14 +40,10 @@ impl Config {
         let home_dir = dirs::home_dir().context("Failed to get home dir")?;
         let cache_dir = dirs::cache_dir().context("Failed to get cache dir")?;
 
-        let tray_icon = {
-            #[cfg(target_os = "linux")]
-            {
-                let runtime_dir = dirs::runtime_dir().context("Failed to get runtime dir")?;
-                runtime_dir.join("stremio-service")
-            }
-
-            #[cfg(not(target_os = "linux"))]
+        let tray_icon = if cfg!(target_os = "linux") {
+            let runtime_dir = dirs::runtime_dir().context("Failed to get runtime dir")?;
+            runtime_dir.join("stremio-service")
+        } else {
             PathBuf::new()
         };
 

@@ -320,16 +320,6 @@ dependencies = [
 
 [[package]]
 name = "cargo_toml"
-version = "0.15.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "599aa35200ffff8f04c1925aa1acc92fa2e08874379ef42e210a80e527e60838"
-dependencies = [
- "serde",
- "toml 0.7.8",
-]
-
-[[package]]
-name = "cargo_toml"
 version = "0.22.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "374b7c592d9c00c1f4972ea58390ac6b18cbb6ab79011f3bdc90a0b82ca06b77"
@@ -2776,8 +2766,7 @@ dependencies = [
  "anyhow",
  "ashpd",
  "bytes",
- "cargo_toml 0.15.3",
- "cargo_toml 0.22.3",
+ "cargo_toml",
  "chrono",
  "clap",
  "dirs 5.0.1",
@@ -3109,18 +3098,6 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "0.7.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd79e69d3b627db300ff956027cc6c3798cef26d22526befdfcd12feeb6d2257"
-dependencies = [
- "serde",
- "serde_spanned 0.6.8",
- "toml_datetime 0.6.8",
- "toml_edit 0.19.15",
-]
-
-[[package]]
-name = "toml"
 version = "0.8.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cd87a5cdd6ffab733b2f74bc4fd7ee5fff6634124999ac278c35fc78c6120148"
@@ -3171,8 +3148,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1b5bb770da30e5cbfde35a2d7b9b8a2c4b8ef89548a7a6aeab5c9a576e3e7421"
 dependencies = [
  "indexmap",
- "serde",
- "serde_spanned 0.6.8",
  "toml_datetime 0.6.8",
  "winnow 0.5.40",
 ]

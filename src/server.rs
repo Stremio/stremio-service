@@ -1,4 +1,4 @@
-// Copyright (C) 2017-2025 Smart Code OOD 203358507
+// Copyright (C) 2017-2026 Smart Code OOD 203358507
 
 use anyhow::{anyhow, bail, Error};
 use log::{error, info};

@@ -1,4 +1,4 @@
-# Copyright (C) 2017-2025 Smart Code OOD 203358507
+# Copyright (C) 2017-2026 Smart Code OOD 203358507
 [package]
 name = "stremio-service"
 version = "0.1.15"
@@ -111,7 +111,7 @@ lto = true
 strip = "debuginfo"
 
 [package.metadata.deb]
-copyright = "Copyright (C) 2017-2025 Smart Code OOD 203358507"
+copyright = "Copyright (C) 2017-2026 Smart Code OOD 203358507"
 extended-description = "Media Center"
 # depends = "$auto, ffprobe (>=4.2.7)"
 depends = "$auto"
@@ -158,7 +158,7 @@ name = "StremioService"
 display_name = "Stremio Service"
 identifier = "com.stremio.service"
 icon = ["resources/service.icns", "StremioService.icns"]
-copyright = "Copyright (C) 2017-2025 Smart Code OOD 203358507"
+copyright = "Copyright (C) 2017-2026 Smart Code OOD 203358507"
 url_scheme = "stremio"
 executable = "stremio-service"
 bins = [

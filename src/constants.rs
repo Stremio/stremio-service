@@ -1,4 +1,4 @@
-// Copyright (C) 2017-2025 Smart Code OOD 203358507
+// Copyright (C) 2017-2026 Smart Code OOD 203358507
 
 pub const STREMIO_URL: &str = "https://web.stremio.com";
 pub const APP_IDENTIFIER: &str = "com.stremio.service";

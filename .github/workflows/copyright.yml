@@ -1,0 +1,49 @@
+# Copyright (C) 2017-2024 Smart code 203358507
+name: Replace copyright
+
+on:
+  # keep the workflow with manual deployment
+  workflow_dispatch:
+  # and update every year on 1st of January
+  # https://crontab.guru/#0_1_1_1_1
+  # “At 01:00 on day-of-month 1 and on Monday in January.” 
+  # 0 1 1 1 1
+  schedule:
+    - cron: "0 1 1 1 1"
+
+jobs:
+  replace-copyright:
+    runs-on: ubuntu-latest
+    if: always()
+    needs: check-copyright-before
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Rust setup
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install dependencies
+        run: cargo install sd
+      - name: Replace copyright text
+        # with hardcoded values
+        # run: `find . \( -path ./target -prune -o -path ./.git -prune -o -path ./README.md \) -o -type f -exec sd "Copyright (C) 2017-2023" "Copyright (C) 2017-2024" {} \;`
+        # TODO: Fix env. variables not applied to the `sd` string
+        # run: THIS_YEAR=$(date +%Y) && LAST_YEAR=$(date +%Y -d "-1 year") && find . \( -path ./target -prune -o -path ./.git -prune \) -o -type f -exec sd "2017-$LAST_YEAR" "2017-$THIS_YEAR" {} \;
+        run: echo TODO
+      
+  check-copyright-before:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Rust setup
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install dependencies
+        run: cargo test copyright
+
+  check-copyright-after:
+    runs-on: ubuntu-latest
+    if: always()
+    needs: replace-copyright
+    steps:
+      - name: Rust setup
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install dependencies
+        run: cargo test copyright

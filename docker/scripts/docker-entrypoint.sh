@@ -133,8 +133,10 @@ start_nginx() {
         exit 1
     fi
     
-    # Start nginx in background
-    nginx &
+    # Start nginx in background but keep it in foreground of its own process
+    # so the shell can track it properly. 
+    # Use -g 'daemon off;' to prevent nginx from forking and the parent exiting.
+    nginx -g "daemon off;" &
     NGINX_PID=$!
     log_info "Nginx started (PID: ${NGINX_PID})"
 }
@@ -209,6 +211,9 @@ shutdown() {
     # Kill Xvfb
     pkill Xvfb 2>/dev/null || true
     
+    # Kill any other background processes
+    jobs -p | xargs kill -TERM 2>/dev/null || true
+    
     log_info "Shutdown complete"
     exit 0
 }
@@ -280,9 +285,11 @@ main() {
     
     # Wait for any process to exit
     wait -n
+    exit_code=$?
     
     # If we get here, something crashed
-    log_error "A service has crashed unexpectedly"
+    log_error "A service has crashed unexpectedly (Exit Code: ${exit_code})"
+    log_error "Current jobs: $(jobs -l)"
     shutdown
 }
 

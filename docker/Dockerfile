@@ -194,7 +194,10 @@ RUN apk add --no-cache \
     libayatana-appindicator \
     zlib \
     xvfb \
-    dbus
+    dbus \
+    mesa-dri-gallium \
+    xdpyinfo \
+    dbus-x11
 
 # Create directories
 RUN mkdir -p /app /data /var/log/nginx /var/log/stremio \

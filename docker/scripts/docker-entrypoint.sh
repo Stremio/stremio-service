@@ -153,10 +153,23 @@ start_stremio() {
     # Start the Stremio service
     if [ -f "/app/stremio-service" ]; then
         log_info "Starting stremio-service with Xvfb..."
+        
+        # Cleanup any stale Xvfb locks
+        rm -f /tmp/.X99-lock /tmp/.X11-unix/X99
+        
         # Use Xvfb to provide a virtual display for the GUI event loop
-        Xvfb :99 -screen 0 1024x768x16 &
+        # -ac disables access control, -screen adds a virtual screen
+        Xvfb :99 -screen 0 1024x768x16 -ac +extension GLX +render -noreset &
         export DISPLAY=:99
-        sleep 1
+        
+        # Wait for Xvfb to be ready
+        timeout=10
+        while [ $timeout -gt 0 ] && ! xdpyinfo -display :99 >/dev/null 2>&1; do
+            log_debug "Waiting for Xvfb..."
+            sleep 0.5
+            timeout=$((timeout - 1))
+        done
+        
         /app/stremio-service &
         STREMIO_PID=$!
     elif [ -f "/app/server.js" ]; then
@@ -213,6 +226,11 @@ main() {
     log_info "Initializing D-Bus..."
     mkdir -p /var/run/dbus
     dbus-uuidgen > /etc/machine-id 2>/dev/null || true
+    # Start dbus-daemon and ensure address is exported
+    if [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then
+        eval $(dbus-launch --sh-syntax)
+        export DBUS_SESSION_BUS_ADDRESS
+    fi
     dbus-daemon --system --fork 2>/dev/null || true
     
     # Set XDG environment variables for headless operation
@@ -221,6 +239,14 @@ main() {
     export XDG_CONFIG_HOME="${STREMIO_DATA_DIR:-/data}/.config"
     export XDG_DATA_HOME="${STREMIO_DATA_DIR:-/data}/.local/share"
     mkdir -p "$XDG_CACHE_HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME"
+    
+    # GTK and GUI compatibility
+    export GTK_USE_PORTAL=0
+    export LIBGL_ALWAYS_SOFTWARE=1
+    export GDK_BACKEND=x11
+    
+    # Optimize nginx
+    export NGINX_WORKER_PROCESSES=auto
     
     # Run setup functions
     setup_directories

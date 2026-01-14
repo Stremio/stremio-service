@@ -10,13 +10,16 @@ FROM rust:1.82-alpine AS rust-builder
 RUN apk add --no-cache \
     musl-dev \
     openssl-dev \
-    openssl-libs-static \
     pkgconfig \
     git \
     curl \
     glib-dev \
     gtk+3.0-dev \
-    libayatana-appindicator-dev
+    libayatana-appindicator-dev \
+    zlib-static
+
+# Force dynamic linking for system libraries (GTK, GLib, etc.) which aren't available statically on Alpine
+ENV RUSTFLAGS="-C target-feature=-crt-static"
 
 WORKDIR /build
 
@@ -126,7 +129,8 @@ RUN apk add --no-cache \
     # For Rust UI dependencies (linked via tao/tray-icon) \
     glib \
     gtk+3.0 \
-    libayatana-appindicator
+    libayatana-appindicator \
+    zlib
 
 # Create directories
 RUN mkdir -p /app /data /var/log/nginx /var/log/stremio \

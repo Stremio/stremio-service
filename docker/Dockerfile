@@ -72,7 +72,7 @@ RUN git clone --depth 1 --branch n4.4.4 https://github.com/FFmpeg/FFmpeg.git ffm
 ###############################################################################
 # Stage 2: Build the Rust application
 ###############################################################################
-FROM rust:1.75-alpine AS rust-builder
+FROM rust:1.82-alpine AS rust-builder
 
 # Install build dependencies
 RUN apk add --no-cache \

@@ -43,7 +43,7 @@ services:
       - RUST_LOG=info
     
     ports:
-      - "8080:8080"
+      - "18080:8080"
       # Uncomment if you need direct access to the Stremio server
       #- "11470:11470"
     

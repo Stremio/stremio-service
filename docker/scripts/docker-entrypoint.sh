@@ -266,6 +266,10 @@ main() {
     sleep 2
     
     start_nginx
+    
+    # Tail nginx logs to stdout so they appear in Dokploy logs
+    tail -f /var/log/nginx/access.log /var/log/nginx/error.log /var/log/nginx/scanner.log /var/log/nginx/unmatched.log &
+    
     start_ip_banner
     
     log_info "=========================================="

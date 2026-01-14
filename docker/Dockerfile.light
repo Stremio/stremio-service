@@ -13,7 +13,10 @@ RUN apk add --no-cache \
     openssl-libs-static \
     pkgconfig \
     git \
-    curl
+    curl \
+    glib-dev \
+    gtk+3.0-dev \
+    libayatana-appindicator-dev
 
 WORKDIR /build
 
@@ -116,8 +119,12 @@ RUN apk add --no-cache \
     grep \
     gawk \
     coreutils \
-    # For htpasswd
-    apache2-utils
+    # For htpasswd \
+    apache2-utils \
+    # For Rust UI dependencies (linked via tao/tray-icon) \
+    glib \
+    gtk+3.0 \
+    libayatana-appindicator
 
 # Create directories
 RUN mkdir -p /app /data /var/log/nginx /var/log/stremio \

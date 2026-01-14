@@ -35,6 +35,8 @@ RUN cargo build --release --features=offline-build 2>/dev/null || true
 
 # Copy actual source code
 COPY src ./src
+COPY icons ./icons
+COPY resources ./resources
 
 # Touch to force rebuild
 RUN touch src/main.rs

@@ -152,7 +152,11 @@ start_stremio() {
     
     # Start the Stremio service
     if [ -f "/app/stremio-service" ]; then
-        log_info "Starting stremio-service binary..."
+        log_info "Starting stremio-service with Xvfb..."
+        # Use Xvfb to provide a virtual display for the GUI event loop
+        Xvfb :99 -screen 0 1024x768x16 &
+        export DISPLAY=:99
+        sleep 1
         /app/stremio-service &
         STREMIO_PID=$!
     elif [ -f "/app/server.js" ]; then
@@ -188,6 +192,9 @@ shutdown() {
         log_info "Stopping Stremio Service..."
         kill -TERM "${STREMIO_PID}" 2>/dev/null || true
     fi
+
+    # Kill Xvfb
+    pkill Xvfb 2>/dev/null || true
     
     log_info "Shutdown complete"
     exit 0
@@ -201,6 +208,19 @@ main() {
     
     # Setup signal handlers
     trap shutdown SIGTERM SIGINT SIGQUIT
+    
+    # Setup D-Bus (required for many GUI libraries)
+    log_info "Initializing D-Bus..."
+    mkdir -p /var/run/dbus
+    dbus-uuidgen > /etc/machine-id 2>/dev/null || true
+    dbus-daemon --system --fork 2>/dev/null || true
+    
+    # Set XDG environment variables for headless operation
+    export XDG_RUNTIME_DIR=/tmp
+    export XDG_CACHE_HOME="${STREMIO_DATA_DIR:-/data}/.cache"
+    export XDG_CONFIG_HOME="${STREMIO_DATA_DIR:-/data}/.config"
+    export XDG_DATA_HOME="${STREMIO_DATA_DIR:-/data}/.local/share"
+    mkdir -p "$XDG_CACHE_HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME"
     
     # Run setup functions
     setup_directories
@@ -221,9 +241,11 @@ main() {
     log_info "   All services started successfully!"
     log_info "=========================================="
     log_info ""
-    log_info "Access the server at: http://localhost:8080"
-    if [ -n "${USERNAME}" ]; then
-        log_info "Authentication: Enabled (user: ${USERNAME})"
+    if [ -n "${SERVER_URL}" ]; then
+        log_info "Access the server at: ${SERVER_URL}"
+    else
+        log_info "Access the server at: http://localhost:8080 (Internal Container Port)"
+        log_info "Make sure to use the host port you mapped (e.g., http://localhost:18080)"
     fi
     log_info ""
     

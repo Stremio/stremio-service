@@ -130,7 +130,9 @@ RUN apk add --no-cache \
     glib \
     gtk+3.0 \
     libayatana-appindicator \
-    zlib
+    zlib \
+    xvfb \
+    dbus
 
 # Create directories
 RUN mkdir -p /app /data /var/log/nginx /var/log/stremio \

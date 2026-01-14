@@ -59,7 +59,6 @@ setup/
 *.ico
 sign.ps1
 
-# Cargo files (already processed in build)
-Cargo.lock
+# Cargo build cache (not needed)
 .cargo/
-rust-toolchain.toml
+# Note: Cargo.lock IS needed for Docker builds

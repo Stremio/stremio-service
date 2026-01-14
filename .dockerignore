@@ -1,0 +1,65 @@
+# Docker build artifacts
+*.tar
+*.tar.gz
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local development
+*.local
+.env.local
+
+# Test files
+test/
+tests/
+
+# Documentation source (keep compiled)
+docs/
+
+# Git
+.git/
+.gitignore
+.gitmodules
+
+# GitHub
+.github/
+
+# Rust build artifacts (we copy only what we need)
+target/debug/
+target/release/deps/
+target/release/build/
+target/release/incremental/
+target/release/.fingerprint/
+target/.rustc_info.json
+target/.cargo-lock
+
+# Keep only the release binary
+!target/release/stremio-service
+
+# Development files
+*.md
+!README.md
+Makefile
+
+# Flatpak (not needed for Docker)
+flatpak/
+*.flatpak
+
+# Windows/macOS specific
+setup/
+*.iss
+*.icns
+*.ico
+sign.ps1
+
+# Cargo files (already processed in build)
+Cargo.lock
+.cargo/
+rust-toolchain.toml

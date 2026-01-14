@@ -1,0 +1,80 @@
+# Copyright (C) 2017-2026 Smart Code OOD 203358507
+# Docker Compose configuration for stremio-service
+
+services:
+  stremio:
+    build:
+      context: ..
+      # Use Dockerfile.light for faster builds (pre-built FFmpeg)
+      # Use Dockerfile for full build (compiles FFmpeg from source)
+      dockerfile: docker/Dockerfile.light
+      args:
+        SERVER_VERSION: ${SERVER_VERSION:-v4.20.16}
+        NODE_VERSION: ${NODE_VERSION:-v20.10.0}
+    image: stremio-service:latest
+    container_name: stremio-service
+    restart: unless-stopped
+    
+    # Required for IP banning with iptables
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    
+    environment:
+      # Server Configuration
+      - NO_CORS=1
+      - AUTO_SERVER_URL=1
+      #- SERVER_URL=http://your-server:8080/
+      #- IPADDRESS=192.168.1.100
+      #- DOMAIN=stremio.yourdomain.com
+      
+      # Authentication (optional)
+      #- USERNAME=stremio
+      #- PASSWORD=your_secure_password
+      
+      # IP Banning Configuration
+      - ENABLE_IP_BAN=1
+      - BAN_THRESHOLD=10          # Number of suspicious requests before ban
+      - BAN_WINDOW=60             # Time window in seconds to count requests
+      - BAN_DURATION=3600         # Ban duration in seconds (1 hour)
+      
+      # Logging
+      - LOG_LEVEL=info
+      - RUST_LOG=info
+    
+    ports:
+      - "8080:8080"
+      # Uncomment if you need direct access to the Stremio server
+      #- "11470:11470"
+    
+    volumes:
+      # Persistent data storage
+      - stremio-data:/data
+      # Custom SSL certificates (optional)
+      #- ./certs:/certs:ro
+      # Ban database persistence
+      - stremio-bans:/var/lib/stremio-bans
+    
+    healthcheck:
+      test: ["CMD", "/app/healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  stremio-data:
+    driver: local
+  stremio-bans:
+    driver: local
+
+# Optional: Network configuration for additional security
+networks:
+  default:
+    driver: bridge

@@ -63,22 +63,6 @@ ARG SERVER_VERSION=v4.20.16
 RUN echo "Downloading server.js ${SERVER_VERSION}..." && \
     curl -fsSL "https://dl.strem.io/server/${SERVER_VERSION}/desktop/server.js" -o server.js
 
-# Download Node.js as stremio-runtime
-ARG NODE_VERSION=v20.10.0
-RUN echo "Downloading Node.js ${NODE_VERSION} as stremio-runtime..." && \
-    ARCH=$(uname -m) && \
-    case "$ARCH" in \
-        x86_64) NODE_ARCH="x64" ;; \
-        aarch64) NODE_ARCH="arm64" ;; \
-        armv7l) NODE_ARCH="armv7l" ;; \
-        *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
-    esac && \
-    curl -fsSL "https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-linux-${NODE_ARCH}.tar.xz" -o node.tar.xz && \
-    tar -xf node.tar.xz && \
-    mv node-${NODE_VERSION}-linux-${NODE_ARCH}/bin/node stremio-runtime && \
-    chmod +x stremio-runtime && \
-    rm -rf node.tar.xz node-${NODE_VERSION}-linux-${NODE_ARCH}
-
 # Download static FFmpeg build (much faster than compiling)
 ARG FFMPEG_VERSION=6.1
 RUN echo "Downloading FFmpeg static build..." && \
@@ -135,7 +119,9 @@ RUN apk add --no-cache \
     dbus \
     mesa-dri-gallium \
     xdpyinfo \
-    dbus-x11
+    dbus-x11 \
+    nodejs \
+    gcompat
 
 # Create directories
 RUN mkdir -p /app /data /var/log/nginx /var/log/stremio \
@@ -147,7 +133,9 @@ WORKDIR /app
 COPY --from=downloader /download/ffmpeg /app/ffmpeg
 COPY --from=downloader /download/ffprobe /app/ffprobe
 COPY --from=downloader /download/server.js /app/server.js
-COPY --from=downloader /download/stremio-runtime /app/stremio-runtime
+
+# Use system Node.js as stremio-runtime (fixing glibc/musl compatibility)
+RUN ln -sf /usr/bin/node /app/stremio-runtime
 
 # Copy Rust binary
 COPY --from=rust-builder /build/target/release/stremio-service /app/stremio-service
@@ -162,6 +150,9 @@ COPY docker/nginx/http.d/https.conf /etc/nginx/http.d/https.conf.template
 COPY docker/nginx/blocked_ips.conf /etc/nginx/blocked_ips.conf
 COPY docker/nginx/scanner_block.conf /etc/nginx/scanner_block.conf
 COPY docker/nginx/auth.conf /etc/nginx/auth.conf
+
+# Setup desktop file to prevent autostart errors
+COPY resources/com.stremio.service.desktop /usr/share/applications/com.stremio.service.desktop
 
 # Copy entrypoint and helper scripts
 COPY docker/scripts/docker-entrypoint.sh /entrypoint.sh

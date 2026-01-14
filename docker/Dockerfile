@@ -124,22 +124,10 @@ RUN apk add --no-cache curl jq tar xz
 
 WORKDIR /download
 
-# Get server.js version from Cargo.toml and download it
-ARG SERVER_VERSION=v4.20.16
+# Download server.js
 RUN echo "Downloading server.js ${SERVER_VERSION}..." && \
     curl -fsSL "https://dl.strem.io/server/${SERVER_VERSION}/desktop/server.js" -o server.js && \
     echo "server.js downloaded successfully"
-
-# Download stremio-runtime (Node.js runtime bundled for Stremio)
-# This is typically from the stremio-shell releases
-ARG RUNTIME_VERSION=v14.18.1
-RUN echo "Downloading stremio-runtime..." && \
-    # Try to get from GitHub releases, fall back to node binary
-    (curl -fsSL "https://nodejs.org/dist/${RUNTIME_VERSION}/node-${RUNTIME_VERSION}-linux-x64.tar.xz" -o node.tar.xz && \
-     tar -xf node.tar.xz && \
-     mv node-${RUNTIME_VERSION}-linux-x64/bin/node stremio-runtime && \
-     rm -rf node.tar.xz node-${RUNTIME_VERSION}-linux-x64) || \
-    echo "Using system node as runtime"
 
 ###############################################################################
 # Stage 4: Final runtime image
@@ -197,7 +185,9 @@ RUN apk add --no-cache \
     dbus \
     mesa-dri-gallium \
     xdpyinfo \
-    dbus-x11
+    dbus-x11 \
+    nodejs \
+    gcompat
 
 # Create directories
 RUN mkdir -p /app /data /var/log/nginx /var/log/stremio \
@@ -214,17 +204,17 @@ COPY --from=rust-builder /build/target/release/stremio-service /app/stremio-serv
 
 # Copy downloaded binaries
 COPY --from=downloader /download/server.js /app/server.js
-COPY --from=downloader /download/stremio-runtime /app/stremio-runtime
+
+# Use system Node.js as stremio-runtime (fixing glibc/musl compatibility)
+RUN ln -sf /usr/bin/node /app/stremio-runtime
 
 # Make binaries executable
-RUN chmod +x /app/stremio-service /app/stremio-runtime /app/ffmpeg /app/ffprobe
+RUN chmod +x /app/stremio-service /app/ffmpeg /app/ffprobe
 
 # Copy existing binaries if they exist (to allow pre-built binaries)
-# These COPY commands will fail silently if files don't exist due to the -f flag behavior
-COPY resources/bin/linux/server.js* /app/ 2>/dev/null || true
-COPY resources/bin/linux/stremio-runtime* /app/ 2>/dev/null || true
-COPY resources/bin/linux/ffmpeg* /app/ 2>/dev/null || true
-COPY resources/bin/linux/ffprobe* /app/ 2>/dev/null || true
+COPY resources/bin/linux/server.js* /app/
+COPY resources/bin/linux/ffmpeg* /app/
+COPY resources/bin/linux/ffprobe* /app/
 
 # Copy nginx configuration
 COPY docker/nginx/nginx.conf /etc/nginx/nginx.conf
@@ -233,6 +223,9 @@ COPY docker/nginx/http.d/https.conf /etc/nginx/http.d/https.conf.template
 COPY docker/nginx/blocked_ips.conf /etc/nginx/blocked_ips.conf
 COPY docker/nginx/scanner_block.conf /etc/nginx/scanner_block.conf
 COPY docker/nginx/auth.conf /etc/nginx/auth.conf
+
+# Setup desktop file to prevent autostart errors
+COPY resources/com.stremio.service.desktop /usr/share/applications/com.stremio.service.desktop
 
 # Copy entrypoint and helper scripts
 COPY docker/scripts/docker-entrypoint.sh /entrypoint.sh

@@ -270,8 +270,11 @@ main() {
     if [ -n "${SERVER_URL}" ]; then
         log_info "Access the server at: ${SERVER_URL}"
     else
-        log_info "Access the server at: http://localhost:8080 (Internal Container Port)"
-        log_info "Make sure to use the host port you mapped (e.g., http://localhost:18080)"
+        # Try to guess the host port if we are in a common environment
+        PUBLIC_PORT="${PORT:-18080}"
+        log_info "Access the server at: http://localhost:${PUBLIC_PORT}"
+        log_info "  - Internal Port: 8080"
+        log_info "  - Note: Check your Dokploy dashboard for the assigned Public Port"
     fi
     log_info ""
     

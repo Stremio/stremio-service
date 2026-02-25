@@ -10,7 +10,7 @@ jobs:
   macos-release:
     runs-on: macos-latest
     env:
-      APP_IDENTITY: "FA18F75D76A5D513F8465C671CD0FE2F7F9AA848"
+      APP_IDENTITY: "5758FFF7E17363FB160E351598030EE7A20988BD"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -38,35 +38,34 @@ jobs:
           security default-keychain -s build.keychain
           security set-keychain-settings build.keychain
           security unlock-keychain -p stremioservice build.keychain
-          security import ./resources/certificates/developer_id_Installer.p12 -k build.keychain -P ${{ secrets.APPLE_CERTIFICATE_PASSWORD }} -T /usr/bin/codesign
-          security import ./resources/certificates/developer_id_app.p12 -k build.keychain -P ${{ secrets.APPLE_CERTIFICATE_PASSWORD }} -T /usr/bin/codesign
+          security import ./resources/certificates/Certificates.p12 -k build.keychain -P ${{ secrets.APPLE_DEVELOPER_CERT_PASS_2 }} -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple: -s -k stremioservice build.keychain
           security find-identity -v
-#      - name: Sign app
-#        run: |
-#          codesign --deep --force --verbose --sign "$APP_IDENTITY" --entitlements ./resources/entitlements.plist --options runtime target/macos/StremioService.app
-#      - name: Compress app
-#        run: |
-#          ditto -c -k --sequesterRsrc --keepParent target/macos/StremioService.app target/macos/StremioService.app.zip
-#      - name: Notarize app
-#        env:
-#          NOTARIZATION_PWD: ${{ secrets.APPLE_DEVACCOUNT_NOTARIZATION_APP_SPECIFIC_PWD }}
-#          TEAM_ID: ${{ secrets.TEAM_ID }}
-#        run: |
-#          echo "Create keychain profile"
-#          xcrun notarytool store-credentials "notarytool-profile" --apple-id "ivo@linvo.com" --team-id "$TEAM_ID" --password "$NOTARIZATION_PWD"
-#          echo "Notarize app"
-#          xcrun notarytool submit target/macos/StremioService.app.zip --keychain-profile "notarytool-profile" --wait
-#          echo Stapling the app...
-#          xcrun stapler staple "target/macos/StremioService.app"
+      - name: Sign app
+        run: |
+          codesign --deep --force --verbose --sign "$APP_IDENTITY" --entitlements ./resources/entitlements.plist --options runtime target/macos/StremioService.app
+      - name: Compress app
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent target/macos/StremioService.app target/macos/StremioService.app.zip
+      - name: Notarize app
+        env:
+          NOTARIZATION_PWD: ${{ secrets.APPLE_DEVACCOUNT_NOTARIZATION_APP_SPECIFIC_PWD_2 }}
+          TEAM_ID: ${{ secrets.APPLE_DEVELOPER_TEAM_ID_2 }}
+        run: |
+          echo "Create keychain profile"
+          xcrun notarytool store-credentials "notarytool-profile" --apple-id "app@stremio.com" --team-id "$TEAM_ID" --password "$NOTARIZATION_PWD"
+          echo "Notarize app"
+          xcrun notarytool submit target/macos/StremioService.app.zip --keychain-profile "notarytool-profile" --wait
+          echo Stapling the app...
+          xcrun stapler staple "target/macos/StremioService.app"
 
       - name: Package
         run: |
           appdmg ./resources/appdmg.json "target/macos/StremioService.dmg"
       
-#      - name: Sign DMG
-#        run: |
-#          codesign --deep --force --verbose --sign "$APP_IDENTITY" target/macos/StremioService.dmg
+      - name: Sign DMG
+        run: |
+          codesign --deep --force --verbose --sign "$APP_IDENTITY" target/macos/StremioService.dmg
   
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1

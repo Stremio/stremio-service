@@ -1,22 +1,6 @@
-param (
-    [String]$pw = $( Read-Host "Password" )
-)
 
 if ($null -eq (Get-Command "signtool" -ErrorAction SilentlyContinue)) {
     Write-Host "No VC vars found"
-}
-
-$thread = Start-ThreadJob -InputObject ($pw) -ScriptBlock {
-    $wshell = New-Object -ComObject wscript.shell;
-    $pw = "$($input)~"
-    while ($true) {
-        while ( -not $wshell.AppActivate("Token Logon")) {
-            Start-Sleep 1
-        }
-        Start-Sleep 1
-        $wshell.SendKeys($pw, $true)
-        Start-Sleep 1
-    }
 }
 
 # Get latest build from s3
@@ -28,9 +12,7 @@ if (Test-Path "stremio-service-windows") {
 }
 Expand-Archive -Path .\stremio-service-windows.zip -DestinationPath .\stremio-service-windows
 
-$env:package_version = (Select-String -Path .\CMakeLists.txt -Pattern '^project\(stremio VERSION "([^"]+)"\)').Matches.Groups[1].Value
 Write-Host "Building the installer"
 & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' '/Sstremiosign=$qsigntool.exe$q sign /fd SHA256 /t http://timestamp.digicert.com /n $qSmart Code OOD$q $f' 'setup\StremioService.iss'
-
-Stop-Job $thread
+signtool sign /fd SHA256 /t http://timestamp.digicert.com /n "Smart Code OOD" *.exe
 Write-Host "Done"

@@ -8,7 +8,7 @@ on:
 
 jobs:
   macos-release:
-    runs-on: macos-latest
+    runs-on: macOS-15-intel
     env:
       APP_IDENTITY: "5758FFF7E17363FB160E351598030EE7A20988BD"
     steps:

@@ -6,6 +6,7 @@
   <summary>Freedom to Stream</summary>
   <developer_name>Stremio</developer_name>
   <url type="homepage">https://stremio.com</url>
+  <url type="vcs-browser">https://github.com/Stremio/stremio-service</url>
   
   <metadata_license>MIT</metadata_license>
   <project_license>GPL-2.0</project_license>
@@ -20,6 +21,7 @@
   <screenshots>
     <screenshot type="default">
       <image>https://raw.githubusercontent.com/Stremio/stremio-service/master/resources/screenshot.png</image>
+      <caption>Tray icon</caption>
     </screenshot>
   </screenshots>
   

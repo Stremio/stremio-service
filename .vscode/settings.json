@@ -1,7 +1,7 @@
 {
     "rust-analyzer.files.excludeDirs": [
         ".flatpak-builder",
-        "flatpak-build",
-        "stremio-flatpak-repo",
+        "flatpak/build",
+        "flatpak/repo",
     ]
 }

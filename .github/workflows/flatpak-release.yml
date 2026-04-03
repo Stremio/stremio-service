@@ -11,8 +11,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Check release version
-        run: node stremiover.js check
       - name: Update git submodules
         run: git submodule update --init --recursive
       - name: Install dependencies

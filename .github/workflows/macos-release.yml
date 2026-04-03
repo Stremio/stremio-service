@@ -2,9 +2,8 @@
 name: MacOS Release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  release:
+    types: [published]
 
 jobs:
   macos-release:
@@ -89,17 +88,11 @@ jobs:
         with:
           files: resources/bin/macos/ffmpeg resources/bin/macos/ffprobe resources/bin/macos/stremio-runtime target/release/stremio-service resources/bin/macos/server.js LICENSE.md
           dest: stremio-service-macos.zip
-      - name: Get current date
-        id: date
-        run: echo "TODAY_DATE=$(date +'%d %b %Y')" >> $GITHUB_OUTPUT
-      - name: Upload dmg and zip file to release
-        uses: softprops/action-gh-release@v1
+
+      - name: Upload dmg and zip files
+        uses: softprops/action-gh-release@v2
         with:
-          # Use the same name as all releases!
-          name: Stremio Service ${{ github.ref_name }} (${{ steps.date.outputs.TODAY_DATE }})
-          draft: true
-          prerelease: false
-          fail_on_unmatched_files: true
           files: |
             target/macos/StremioService.dmg
             stremio-service-macos.zip
+

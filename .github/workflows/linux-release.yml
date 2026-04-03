@@ -2,9 +2,8 @@
 name: Linux Release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  release:
+    types: [published]
 
 jobs:
   linux-release:
@@ -22,22 +21,16 @@ jobs:
           sudo apt-get install build-essential pkg-config libgtk-3-dev libssl-dev libayatana-appindicator3-dev s3cmd
           cargo install cargo-deb
           cargo install cargo-generate-rpm
-      - name: Get current date
-        id: date
-        run: echo "TODAY_DATE=$(date +'%d %b %Y')" >> $GITHUB_OUTPUT
+
       # Builds the deb linux package
       - name: Build deb package
         run: cargo deb -o target/debian/stremio-service_amd64.deb
-      - name: Upload deb release
-        uses: softprops/action-gh-release@v1
+      - name: Upload deb package
+        uses: softprops/action-gh-release@v2
         with:
-          # Use the same name as all releases!
-          name: Stremio Service ${{ github.ref_name }} (${{ steps.date.outputs.TODAY_DATE }})
-          draft: true
-          prerelease: false
-          fail_on_unmatched_files: true
           files: |
             target/debian/*.deb
+
       # Builds the rpm linux package
       - name: Build release
         run: cargo build --release --features=bundled
@@ -45,14 +38,9 @@ jobs:
         run: strip -s target/release/stremio-service
       - name: Build rpm package
         run: cargo generate-rpm -o target/generate-rpm/stremio-service_x86_64.rpm
-      - name: Upload rpm to release
-        uses: softprops/action-gh-release@v1
+      - name: Upload rpm package
+        uses: softprops/action-gh-release@v2
         with:
-          # Use the same name as all releases!
-          name: Stremio Service ${{ github.ref_name }} (${{ steps.date.outputs.TODAY_DATE }})
-          draft: true
-          prerelease: false
-          fail_on_unmatched_files: true
           files: |
             target/generate-rpm/*.rpm
 

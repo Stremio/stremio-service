@@ -2,9 +2,8 @@
 name: Windows Release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  release:
+    types: [published]
 
 jobs:
   windows-release:
@@ -16,11 +15,17 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
       - name: Build
         run: cargo build --release --features=bundled
+
       - name: Zip release for windows
         uses: vimtor/action-zip@v1.1
         with:
           files: resources/bin/windows/ffmpeg.exe resources/bin/windows/ffprobe.exe resources/bin/windows/stremio-runtime.exe target/release/stremio-service.exe resources/bin/windows/server.js LICENSE.md
           dest: stremio-service-windows.zip
+      - name: Upload zip file
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            stremio-service-windows.zip
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -32,17 +37,3 @@ jobs:
       - name: Upload to Amazon S3
         run: |
           aws s3 cp --acl public-read stremio-service-windows.zip s3://stremio-artifacts/stremio-service-unsigned/${{ github.ref_name }}/
-
-      - name: Get current date
-        id: date
-        run: echo "TODAY_DATE=$(date +'%d %b %Y')" >> $GITHUB_OUTPUT
-      - name: Upload zip file to release
-        uses: softprops/action-gh-release@v1
-        with:
-          # Use the same name as all releases!
-          name: Stremio Service ${{ github.ref_name }} (${{ steps.date.outputs.TODAY_DATE }})
-          draft: true
-          prerelease: false
-          fail_on_unmatched_files: true
-          files: |
-            stremio-service-windows.zip

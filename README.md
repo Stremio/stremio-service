@@ -9,15 +9,12 @@
 
 ## Download
 
-You can find the Stremio Service packages in the [releases asset files](https://github.com/Stremio/stremio-service/releases) or by using one of the following urls.
-
-_For `dl.strem.io` urls replace `{VERSION}` with the latest release version of Stremio Service in the format `v*.*.*`._
-
-- MacOS: https://dl.strem.io/stremio-service/{VERSION}/StremioService.dmg
-- Windows: https://dl.strem.io/stremio-service/{VERSION}/StremioServiceSetup.exe
-- Debian: https://dl.strem.io/stremio-service/{VERSION}/stremio-service_amd64.deb
-- Redhat: https://dl.strem.io/stremio-service/{VERSION}/stremio-service_x86_64.rpm
-- Flatpak package: https://flathub.org/apps/com.stremio.Service
+You can find the Stremio Service packages in the [releases asset files](https://github.com/Stremio/stremio-service/releases) or by using one of the following urls:
+- MacOS: https://dl.strem.io/stremio-service/v0.1.21/StremioService.dmg
+- Windows: https://dl.strem.io/stremio-service/v0.1.21/StremioServiceSetup.exe
+- Debian: https://dl.strem.io/stremio-service/v0.1.21/stremio-service_amd64.deb
+- Redhat: https://dl.strem.io/stremio-service/v0.1.21/stremio-service_x86_64.rpm
+- Flatpak: https://dl.flathub.org/repo/appstream/com.stremio.Service.flatpakref
 
 ## Development
 

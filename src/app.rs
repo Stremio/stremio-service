@@ -163,7 +163,7 @@ pub fn handle_stremio_protocol(open_url: String) {
 fn open_stremio_web(addon_manifest_url: Option<String>) {
     let mut url = STREMIO_URL.to_string();
     if let Some(p) = addon_manifest_url {
-        url = format!("{}/#/addons?addon={}", STREMIO_URL, &encode(&p));
+        url = format!("{}/#/addons?addon={}", STREMIO_URL, encode(&p));
     }
 
     match open::that(url) {

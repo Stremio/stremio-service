@@ -76,7 +76,7 @@ impl Updater {
 
             match self.autoupdate().await {
                 Ok(Some(update)) => {
-                    info!("Found update v{}", update.version.to_string());
+                    info!("Found update v{}", update.version);
 
                     self.run_updater_setup(update.file);
                     return true;

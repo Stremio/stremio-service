@@ -43,6 +43,8 @@ jobs:
         uses: actions/checkout@v4
       - name: Rust setup
         uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
       - name: Install dependencies
         if: matrix.platform == 'ubuntu-latest'
         run: |
@@ -52,3 +54,7 @@ jobs:
         run: cargo build
       - name: Test
         run: cargo test
+      # The lint job runs on Linux, so it never checks Windows-only code.
+      - name: Lint clippy
+        if: matrix.platform == 'windows-latest'
+        run: cargo clippy --all --no-deps -- -D warnings

@@ -143,18 +143,16 @@ fn edit_exe_resources(
     for (i, entry) in icon_dir.entries().iter().enumerate() {
         resources
             .find(resource_type::ICON, Id::Integer((i as u16) + 1))
-            .expect(&format!("Failed to find icon {}", i))
+            .unwrap_or_else(|| panic!("Failed to find icon {}", i))
             .replace(entry.data())?
             .update()?;
     }
 
     match resources.get_version_info() {
-        Ok(version_info) => match version_info {
-            Some(mut version_info) => {
-                version_info.insert_strings(info).update()?;
-            }
-            _ => {}
-        },
+        Ok(Some(mut version_info)) => {
+            version_info.insert_strings(info).update()?;
+        }
+        Ok(None) => {}
         Err(_) => eprintln!("Failed to get version info"),
     }
 

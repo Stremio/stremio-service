@@ -42,8 +42,8 @@ impl Config {
         if directory.is_dir() {
             let server = directory.join("server.js");
             let node = directory.join(Self::node_bin()?);
-            let ffmpeg = directory.join(Self::ffmpeg_bin()?);
-            let ffprobe = directory.join(Self::ffprobe_bin()?);
+            let mut ffmpeg = directory.join(Self::ffmpeg_bin()?);
+            let mut ffprobe = directory.join(Self::ffprobe_bin()?);
 
             let binaries_paths = [
                 server.clone(),
@@ -58,6 +58,15 @@ impl Config {
                 }
             }
 
+            if let Some((system_ffmpeg, system_ffprobe)) = Self::system_ffmpeg() {
+                info!(
+                    "Using system ffmpeg {:?} and ffprobe {:?}",
+                    system_ffmpeg, system_ffprobe
+                );
+                ffmpeg = system_ffmpeg;
+                ffprobe = system_ffprobe;
+            }
+
             Ok(Self {
                 server,
                 node,
@@ -70,6 +79,14 @@ impl Config {
                 directory
             )
         }
+    }
+    fn system_ffmpeg() -> Option<(PathBuf, PathBuf)> {
+        if std::env::consts::OS != "linux" {
+            return None;
+        }
+        let ffmpeg = PathBuf::from("/usr/bin/ffmpeg");
+        let ffprobe = PathBuf::from("/usr/bin/ffprobe");
+        (ffmpeg.is_file() && ffprobe.is_file()).then_some((ffmpeg, ffprobe))
     }
     fn node_bin() -> Result<&'static str, Error> {
         match std::env::consts::OS {

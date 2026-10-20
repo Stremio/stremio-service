@@ -108,8 +108,12 @@ impl Server {
         let mut command = Command::new(&self.inner.config.node);
         #[cfg(target_os = "windows")]
         command.creation_flags(CREATE_NO_WINDOW);
-        command.env("FFMPEG_BIN", &self.inner.config.ffmpeg);
-        command.env("FFPROBE_BIN", &self.inner.config.ffprobe);
+        if std::env::var_os("FFMPEG_BIN").is_none() {
+            command.env("FFMPEG_BIN", &self.inner.config.ffmpeg);
+        }
+        if std::env::var_os("FFPROBE_BIN").is_none() {
+            command.env("FFPROBE_BIN", &self.inner.config.ffprobe);
+        }
         command.arg(&self.inner.config.server);
 
         info!("Starting server.js: {:#?}", command);
